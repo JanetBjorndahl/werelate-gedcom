@@ -30,7 +30,6 @@ public class TestOverlapDetection extends TestCase {
       properties = new Properties();
       properties.load(new FileInputStream("conf/GedcomUpload/elijah.properties"));
       uploader = new Uploader(properties);
-      uploader.setShouldStopWhenWithoutGedcom(true);
       uploader.executeQuery("DELETE FROM familytree_gedcom");
       uploader.executeQuery("ALTER TABLE familytree_gedcom AUTO_INCREMENT=0");
       uploader.setUnitTesting(true);

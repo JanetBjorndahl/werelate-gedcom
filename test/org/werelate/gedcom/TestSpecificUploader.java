@@ -68,7 +68,6 @@ public class TestSpecificUploader extends TestCase {
 
       uploader.setIgnoreUnexpectedTags(true);
       //uploader.setShouldCheckOverlap(false);
-      uploader.setShouldStopWhenWithoutGedcom(true);
       System.out.println("About to loop.");
       try
       {
@@ -77,10 +76,6 @@ public class TestSpecificUploader extends TestCase {
       } catch (Exception e) {
          System.err.println("There was a problem while uploading");
          e.printStackTrace();
-         if (uploader != null)
-         {
-            uploader.touchDiedFile();
-         }
          throw e;
       }
       finally {

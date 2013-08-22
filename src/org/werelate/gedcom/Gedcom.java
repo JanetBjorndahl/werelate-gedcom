@@ -2560,39 +2560,6 @@ public class Gedcom implements ContentHandler {
       fn = filename;
    }
 
-   /**
-    * Logs all places that we couldn't
-    * find standard names for.
-    */
-   public static class PlaceLogger {
-      private static PlaceLogger pl = null;
-      private PrintWriter out = null;
-
-      public static PlaceLogger getInstance() {
-         return pl;
-      }
-
-      public static void instantiate(String loggingOutput)
-            throws IOException {
-         pl = new PlaceLogger(loggingOutput);
-      }
-
-      private PlaceLogger(String loggingOutput) throws IOException {
-         out = new PrintWriter(new FileWriter(loggingOutput));
-      }
-
-      public void flush() {
-         out.flush();
-      }
-
-
-      public void logPlace(String newPlace) {
-         // There has to be a difference in order for us
-         // to bother with printing this out.
-         out.println(newPlace);
-      }
-   }
-
    private boolean ignoreUnexpectedTags = false;
 
    /**

@@ -92,17 +92,6 @@ public class Uploader {
       this.ignoreUnexpectedTags = ignoreUnexpectedTags;
    }
 
-   private boolean shouldStopWhenWithoutGedcom = false;
-
-   /**
-    * Sets whether we should stop the uploader once we run out
-    * of GEDCOMS to process.
-    * @param shouldStopWhenWithoutGedcom
-    */
-   public void setShouldStopWhenWithoutGedcom(boolean shouldStopWhenWithoutGedcom) {
-      this.shouldStopWhenWithoutGedcom = shouldStopWhenWithoutGedcom;
-   }
-
    /**
     * GEDCOM is terminally rejected
     */
@@ -193,21 +182,6 @@ public class Uploader {
    private Properties properties = null;
    private UserTalker userTalker = null;
 
-   private File diedFile  = null;
-
-   private void initDiedFile(Properties properties)
-   {
-      String diedFileName  = properties.getProperty("died_file");
-      if (!Utils.isEmpty(diedFileName))
-      {
-         diedFile = new File(diedFileName);
-         if (diedFile.exists())
-         {
-            diedFile.delete();
-         }
-      }
-   }
-
    /**
     * Sets up all of the initial variables so that
     * we can loop through the GEDCOMs that are ready to
@@ -226,53 +200,16 @@ public class Uploader {
       this.properties = properties;
       Class.forName("com.mysql.jdbc.Driver").newInstance();
       dbConnect();
-      killMeFileName = properties.getProperty("kill_me_file");
-      // Let's make sure that the kill me file does not exist
-      File killMeFile = new File(killMeFileName);
-      if (killMeFile.exists())
-      {
-         // Then we should delete it.
-         killMeFile.delete();
-      }
-      initDiedFile(properties);
       xml_output = properties.getProperty("xml_output");
       xml_inprocess = properties.getProperty("xml_inprocess");
       PageEdit.SetWerelateAgent(properties);
-      String shouldEncodeXML = properties.getProperty("encode_xml").trim();
-      encodeXML = shouldEncodeXML.equals("true");
-      // We try to initialize the GedID if it exists.
-      // The "gedcom_file" property, which may contain a
-      // GedID, is used for debugging and testing
-      // purposes so that we can start at the id we
-      // desire by setting it in the properties file.
-      String tmp = properties.getProperty("gedcom_file");
-      if (!Utils.isEmpty(tmp))
-      {
-         try
-         {
-            gedID = Integer.parseInt(tmp);
-            propGedFile = true;
-         } catch (NumberFormatException e)
-         {
-            gedID = -1;
-         }
-         defaultCountry = properties.getProperty("defaultCountry");
-      }
+      encodeXML = true;
       // The directory which contain the source gedcoms
       gedcomDir = properties.getProperty("gedcom_dir");
       // The hostname of the server the pages will be uploaded to
       wikiServer = properties.getProperty("wiki_server");
       placeServer = properties.getProperty("place_server");
       PageEdit.setWERELATE_URL("http://" + wikiServer);
-      // Location of the name log file where we output all of the
-      // names that we have encountered and the parsed version
-      // In other words we output what went into each field, including
-      // the given name, surname, prefix, suffix, etc.
-      Name.NameLogger.instantiate(properties.getProperty("name_log").trim());
-      // Location of the place logger. This logs the place names that we
-      // extracted from the GEDCOM, and the standardized version of them
-      // as found on the Place search server
-      Gedcom.PlaceLogger.instantiate(properties.getProperty("place_log").trim());      
       // Creates a new userTalker to send messages to users. The sysop user
       // specified here will receive notifications when there are problems with the GEDCOMs.
       userTalker = new UserTalker(properties);
@@ -281,7 +218,6 @@ public class Uploader {
       // match attributes of the family elements
       minimumMatchScore = Float.parseFloat(properties.getProperty("match_threshold",  Float.toString(minimumMatchScore)));
       medievalMatchScore = Float.parseFloat(properties.getProperty("medieval_match_threshold", Float.toString(medievalMatchScore)));
-      Uploader.MatchLogger.instantiate(properties.getProperty("match_log"));
    }
 
    // Connect to the wikidb
@@ -305,12 +241,6 @@ public class Uploader {
    // The hostname of the server to which we're uploading the
    // pages
    private String wikiServer = null;
-
-   // For testing purposes, this specifies whether
-   // we're starting at a specific gedcom as
-   // specified in the properties file as "gedcom_file"
-   private boolean propGedFile = false;
-
 
    private static String printQueryPart(String fieldName, String name)
    {
@@ -586,308 +516,278 @@ public class Uploader {
    {
       try
       {
-         // While the killmefile does not exist
          int numPlaces = 0;
-         while (shouldContinue())
-         {
-            // If we are not starting at a specific gedcom
-            if (!propGedFile)
+         // Sets the gedID and gedStatus and defaultCountry values.
+         getNextGedcomID();
+         while (gedID > -1) {
+            String outputPath = getXml_output() + '/' + gedID + ".xml";
+            File file = new File(outputPath);
+            if (gedStatus == Uploader.STATUS_REGENERATE &&
+                  file.exists())
             {
-               // Sets the gedID and gedStatus and defaultCountry values.
-               getNextGedcomID();
-            } /*else
-            {
-               int tmpID;
-               // We're going to go through the reviewed GEDCOMs
-               // until we find the one we're looking for.
-               do
+               // Then we will just read in the gedcom from the path
+               // instead of reparsing and re-reserving IDs for all
+               // of the titles
+               updateGedcom(STATUS_GENERATING, gedID, "");
+               if (!isUnitTesting())
                {
-                  tmpID = getNextGedcomID(statusToProcess);
-                  updateGedcom(STATUS_PROCESSING, tmpID, "");
-               } while (tmpID < gedID);
-               propGedFile = false;
-            }   */
-            if (gedID > -1)
-            {               
-               String outputPath = getXml_output() + '/' + gedID + ".xml";
-               File file = new File(outputPath);
-               if (gedStatus == Uploader.STATUS_REGENERATE &&
-                     file.exists())
-               {
-                  // Then we will just read in the gedcom from the path
-                  // instead of reparsing and re-reserving IDs for all
-                  // of the titles
-                  updateGedcom(STATUS_GENERATING, gedID, "");
-                  if (!isUnitTesting())
-                  {
-                     // First we need to reload the XML file.
-                     GedcomXML gedXML = new GedcomXML();
-                     try
-                     {
-                        gedXML.parse(outputPath);
-                        readGedcomData(gedXML, true); // re-read gedcom data to set matchedIds and id2ReservedTitle
-                        logger.info("Preparing the XML file to be generated");
-                        gedXML.prepareForGeneration();
-                        logger.info("Updating the family tree with matched titles.");
-                        addPagesToFamilyTree(gedXML.getMatchedPagesXML(treeID));
-                        logger.info("Generating the updated XML file");
-                        uploadXML(gedXML.getPages());
-                        String primaryTitle = gedXML.getPrimaryPersonTitle();
-                        if (primaryTitle != null)
-                        {
-                           updatePrimaryPerson(primaryTitle);
-                        }
-                        logger.info("Done generating the XML file");
-                     } catch (GedcomXML.GedcomXMLException e)
-                     {
-                        logger.warn(e.getMessage());
-                        hadException(e);
-                     }
-                  }
-               } else if (gedStatus == STATUS_CREATE_PAGES)
-               {
-                  // Let's do each of the steps we need to.
-                  // First let's read in the xml that we're going to process.
+                  // First we need to reload the XML file.
+                  GedcomXML gedXML = new GedcomXML();
                   try
                   {
-                     updateGedcom(STATUS_GENERATING, gedID, "");
-                     GedcomXML gedXml = new GedcomXML();
-                     gedXml.parse(getXml_inprocess() + '/' + gedID + ".xml");
-                     readGedcomData(gedXml, false);
-
-                     // Now that we're parsed, let's go ahead and reserve
-                     // the titles.
-                     reserveIDs(gedXml);
-
-                     // Set existing titles in the XML file prior to saving so we can get them in case we need to regenerate
-                     gedXml.setExistingTitles();
-
-                     // Makes all citations of a mysource that only has a title simple the contents of
-                     // the title as opposed to a link to the (now) excluded mysource
-                     // gedXml.fixTitleOnlyMySourceReferences(); -- doesn't seem to work; let's not apply it  (perhaps it's not a good idea after all) 
-
-                     // Now let's go ahead and save the xml file.
-                     // After we save the XML file, we will go ahead and
-                     // generate the pages.
-                     logger.info("Saving the updated XML file");
-                     gedXml.save(new File(getXml_output() + '/' + gedID + ".xml"));
-
+                     gedXML.parse(outputPath);
+                     readGedcomData(gedXML, true); // re-read gedcom data to set matchedIds and id2ReservedTitle
                      logger.info("Preparing the XML file to be generated");
-                     gedXml.prepareForGeneration();
-                     if (!isUnitTesting())
+                     gedXML.prepareForGeneration();
+                     logger.info("Updating the family tree with matched titles.");
+                     addPagesToFamilyTree(gedXML.getMatchedPagesXML(treeID));
+                     logger.info("Generating the updated XML file");
+                     uploadXML(gedXML.getPages());
+                     String primaryTitle = gedXML.getPrimaryPersonTitle();
+                     if (primaryTitle != null)
                      {
-                        logger.info("Updating the family tree with matched titles.");
-                        addPagesToFamilyTree(gedXml.getMatchedPagesXML(treeID));
-                        logger.info("Generating the updated XML file");
-                        uploadXML(gedXml.getPages());
-                        String primaryTitle = gedXml.getPrimaryPersonTitle();
-                        if (primaryTitle != null)
-                        {
-                           updatePrimaryPerson(primaryTitle);
-                        }
-                        logger.info("Done generating the XML file");
+                        updatePrimaryPerson(primaryTitle);
                      }
+                     logger.info("Done generating the XML file");
                   } catch (GedcomXML.GedcomXMLException e)
                   {
                      logger.warn(e.getMessage());
                      hadException(e);
                   }
-                  catch (XPathException e)
-                  {
-                     logger.warn ("XPath Exception: "+e.getMessage());
-                     hadException(e);
-                  }catch (SAXException e)
-                  {
-                     logger.warn ("SAX Exception: "+e.getMessage());
-                     hadException(e);
-                  }
-               } else if (gedStatus == STATUS_UPLOADED
-                     || gedStatus==STATUS_IGNORE_OVERLAP)
+               }
+            } else if (gedStatus == STATUS_CREATE_PAGES)
+            {
+               // Let's do each of the steps we need to.
+               // First let's read in the xml that we're going to process.
+               try
                {
-                  try
+                  updateGedcom(STATUS_GENERATING, gedID, "");
+                  GedcomXML gedXml = new GedcomXML();
+                  gedXml.parse(getXml_inprocess() + '/' + gedID + ".xml");
+                  readGedcomData(gedXml, false);
+
+                  // Now that we're parsed, let's go ahead and reserve
+                  // the titles.
+                  reserveIDs(gedXml);
+
+                  // Set existing titles in the XML file prior to saving so we can get them in case we need to regenerate
+                  gedXml.setExistingTitles();
+
+                  // Makes all citations of a mysource that only has a title simple the contents of
+                  // the title as opposed to a link to the (now) excluded mysource
+                  // gedXml.fixTitleOnlyMySourceReferences(); -- doesn't seem to work; let's not apply it  (perhaps it's not a good idea after all)
+
+                  // Now let's go ahead and save the xml file.
+                  // After we save the XML file, we will go ahead and
+                  // generate the pages.
+                  logger.info("Saving the updated XML file");
+                  gedXml.save(new File(getXml_output() + '/' + gedID + ".xml"));
+
+                  logger.info("Preparing the XML file to be generated");
+                  gedXml.prepareForGeneration();
+                  if (!isUnitTesting())
                   {
-                     updateGedcom(STATUS_PROCESSING, gedID, "");
-                     String inputPath = gedcomDir + '/' + gedID + ".ged";
-                     outputPath = this.getXml_inprocess() + '/' + gedID + ".xml";
-                     StringBuffer placeXMLBuffer = new StringBuffer();
-                     boolean isTrustedUploader = getIsTrustedUploader(userName, gedID);
-                     Gedcom gedcom = new Gedcom(this, inputPath, userName,
-                                                placeServer, defaultCountry, treeID, isTrustedUploader,
-                                                isIgnoreUnexpectedTags(), placeXMLBuffer);
-                     // If the GEDCOM appears to not be a GEDCOM,
-                     if(gedcom.isInvalid())
+                     logger.info("Updating the family tree with matched titles.");
+                     addPagesToFamilyTree(gedXml.getMatchedPagesXML(treeID));
+                     logger.info("Generating the updated XML file");
+                     uploadXML(gedXml.getPages());
+                     String primaryTitle = gedXml.getPrimaryPersonTitle();
+                     if (primaryTitle != null)
                      {
-                        doGedInvalid();
-                     } else
-                     {
-                        numPlaces += gedcom.getNumPlacesQueried();
-                        logger.info("Change living name to unknown");
-                        logger.info("Setting isLiving");
-                        Person.setLiving(gedcom);
-                        // don't do this anymore
-                        //gedcom.propagatePrimaryPerson();
-                        logger.info("Done setting isLiving");
-                        logger.info("Changing names from living to unknown");
-                        Person.setUnknownName(gedcom);
-                        logger.info("Done changing names");
-                        logger.info("Setting isBornBeforeCutoff");
-                        Person.setAllBornBeforeCutoff(gedcom);
-                        logger.info("Done setting isBornBeforeCutoff");
-                        PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8"));
-                        int numCitationOnlySources = 0;
-                        for (Source source : gedcom.getSources().values()) {
-                           if (!source.shouldPrint(gedcom)) {
-                              numCitationOnlySources++;
-                           }
+                        updatePrimaryPerson(primaryTitle);
+                     }
+                     logger.info("Done generating the XML file");
+                  }
+               } catch (GedcomXML.GedcomXMLException e)
+               {
+                  logger.warn(e.getMessage());
+                  hadException(e);
+               }
+               catch (XPathException e)
+               {
+                  logger.warn ("XPath Exception: "+e.getMessage());
+                  hadException(e);
+               }catch (SAXException e)
+               {
+                  logger.warn ("SAX Exception: "+e.getMessage());
+                  hadException(e);
+               }
+            } else if (gedStatus == STATUS_UPLOADED
+                  || gedStatus==STATUS_IGNORE_OVERLAP)
+            {
+               try
+               {
+                  updateGedcom(STATUS_PROCESSING, gedID, "");
+                  String inputPath = gedcomDir + '/' + gedID + ".ged";
+                  outputPath = this.getXml_inprocess() + '/' + gedID + ".xml";
+                  StringBuffer placeXMLBuffer = new StringBuffer();
+                  boolean isTrustedUploader = getIsTrustedUploader(userName, gedID);
+                  Gedcom gedcom = new Gedcom(this, inputPath, userName,
+                                             placeServer, defaultCountry, treeID, isTrustedUploader,
+                                             isIgnoreUnexpectedTags(), placeXMLBuffer);
+                  // If the GEDCOM appears to not be a GEDCOM,
+                  if(gedcom.isInvalid())
+                  {
+                     doGedInvalid();
+                  } else
+                  {
+                     numPlaces += gedcom.getNumPlacesQueried();
+                     logger.info("Change living name to unknown");
+                     logger.info("Setting isLiving");
+                     Person.setLiving(gedcom);
+                     // don't do this anymore
+                     //gedcom.propagatePrimaryPerson();
+                     logger.info("Done setting isLiving");
+                     logger.info("Changing names from living to unknown");
+                     Person.setUnknownName(gedcom);
+                     logger.info("Done changing names");
+                     logger.info("Setting isBornBeforeCutoff");
+                     Person.setAllBornBeforeCutoff(gedcom);
+                     logger.info("Done setting isBornBeforeCutoff");
+                     PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8"));
+                     int numCitationOnlySources = 0;
+                     for (Source source : gedcom.getSources().values()) {
+                        if (!source.shouldPrint(gedcom)) {
+                           numCitationOnlySources++;
                         }
-                        out.print("<gedcom citation_only_sources=\""+numCitationOnlySources+"\"");
-                        if (gedcom.getPrimaryPerson() != null)
+                     }
+                     out.print("<gedcom citation_only_sources=\""+numCitationOnlySources+"\"");
+                     if (gedcom.getPrimaryPerson() != null)
+                     {
+                        out.print(" primary_person=\"" + gedcom.getPrimaryPerson().getID() + "\"");
+                     }
+                     out.println(">");
+                     out.print(placeXMLBuffer);
+                     logger.info("Printing sources");
+                     // Print out souces to the xml file
+                     for (Map.Entry entry : gedcom.getSources().entrySet()) {
+                        // When adding new sources to the source map
+                        // (when parsing the GEDCOM),
+                        // we check to see if there is another existing
+                        // source which already has the same contents as
+                        // the source we are about to add.
+                        // If there is such an existing source, then
+                        // we make the id we are about to add point to the
+                        // existing source.
+                        //
+                        // This has the consequence that when we iterate
+                        // through all of the sources in the source map
+                        // to print them out,
+                        // we need to make sure that the key (id number)
+                        // equals the value (Source)'s id number,
+                        // so that we only print out each unique source
+                        // once.
+                        Source source = (Source) entry.getValue();
+                        if (entry.getKey().equals(source.getID()))
                         {
-                           out.print(" primary_person=\"" + gedcom.getPrimaryPerson().getID() + "\"");
-                        }
-                        out.println(">");
-                        out.print(placeXMLBuffer);
-                        logger.info("Printing sources");
-                        // Print out souces to the xml file
-                        for (Map.Entry entry : gedcom.getSources().entrySet()) {
-                           // When adding new sources to the source map
-                           // (when parsing the GEDCOM),
-                           // we check to see if there is another existing
-                           // source which already has the same contents as
-                           // the source we are about to add.
-                           // If there is such an existing source, then
-                           // we make the id we are about to add point to the
-                           // existing source.
-                           //
-                           // This has the consequence that when we iterate
-                           // through all of the sources in the source map
-                           // to print them out,
-                           // we need to make sure that the key (id number)
-                           // equals the value (Source)'s id number,
-                           // so that we only print out each unique source
-                           // once.
-                           Source source = (Source) entry.getValue();
-                           if (entry.getKey().equals(source.getID()))
+                           try
                            {
-                              try
-                              {
-                                 if (source.shouldPrint(gedcom)) {
-                                    source.print(gedcom, out, isEncodeXML());
-                                 }
-                              } catch (PrintException e)
-                              {
-                                 logger.warn(e);
+                              if (source.shouldPrint(gedcom)) {
+                                 source.print(gedcom, out, isEncodeXML());
                               }
-                           }
-                        }
-
-                        logger.info("Printing people while auditing for problems");
-                        // Print out all of the people to the xml file
-                        for(Person person : gedcom.getPeople().values())
-                        {
-                           try
-                           {
-                              person.findProblems();
-                              person.print(gedcom, out, isEncodeXML());
                            } catch (PrintException e)
                            {
                               logger.warn(e);
-                           }
-                        }
-                        // Print out all of the families to the xml file
-                        MultiMap<String, Family> familyNames2Families = new MultiMap<String, Family>();
-                        // Let's fill the multimap with the families:
-                        logger.info("Finding possible matches for families");
-                        for (Family fam : gedcom.getFamilies().values())
-                        {
-                           if (!stubMatching && fam.shouldPrint(gedcom))
-                           {
-                              findMatches(fam, gedcom);
-                           }
-                           familyNames2Families.put(fam.getWikiTitle(gedcom), fam);
-                        }
-                        logger.info("Printing families while auditing for problems");
-                        for(Family fam : gedcom.getFamilies().values())
-                        {
-                           try
-                           {
-                              fam.findProblems(familyNames2Families, gedcom);
-                              fam.print(gedcom, out, isEncodeXML());
-                           } catch (PrintException e)
-                           {
-                              logger.warn(e);
-                           }
-                        }
-                        out.println("</gedcom>");
-                        out.close();
-                        MatchLogger.getInstance().flush();
-                        // If there are warnings, then we want to update the status
-                        // of the GEDCOM and skip the page generation
-                        if (gedcom.getNumWarnings() > 0)
-                        {
-                           logger.warn(gedcom.getUserName() + ':' + gedcom.getFN() + " has "
-                                 + gedcom.getNumWarnings() + " warning(s).");
-                           String reason;
-                           if (gedcom.isUnknownTag())
-                           {
-                              reason = "Unfamiliar tag(s) found in gedcom";
-                           } else
-                           {
-                              reason = "Post-processing exception occurred";
-                           }
-                           updateGedcom(STATUS_ERROR, gedID, reason);
-                           userTalker.sendErrorMessage(userName, gedcomName, gedID);
-                        } else
-                        {
-                           // It's time to use the api to actually update the gedcom
-
-                           // First let's free up the memory taken up by the gedcom object:
-                           gedcom = null;
-
-                           // Let's update the GEDCOM's status so that the
-                           // user may review it.
-                           System.out.print('\n');
-                           updateGedcom(Uploader.STATUS_REVIEW, gedID, "");
-                           if (!this.isUnitTesting())
-                           {
-                              userTalker.sendGedcomReviewMessage(userName, gedcomName, gedID);
                            }
                         }
                      }
-                  } catch (SAXException e)
-                  {
-                     hadException(e);
+
+                     logger.info("Printing people while auditing for problems");
+                     // Print out all of the people to the xml file
+                     for(Person person : gedcom.getPeople().values())
+                     {
+                        try
+                        {
+                           person.findProblems();
+                           person.print(gedcom, out, isEncodeXML());
+                        } catch (PrintException e)
+                        {
+                           logger.warn(e);
+                        }
+                     }
+                     // Print out all of the families to the xml file
+                     MultiMap<String, Family> familyNames2Families = new MultiMap<String, Family>();
+                     // Let's fill the multimap with the families:
+                     logger.info("Finding possible matches for families");
+                     for (Family fam : gedcom.getFamilies().values())
+                     {
+                        if (!stubMatching && fam.shouldPrint(gedcom))
+                        {
+                           findMatches(fam, gedcom);
+                        }
+                        familyNames2Families.put(fam.getWikiTitle(gedcom), fam);
+                     }
+                     logger.info("Printing families while auditing for problems");
+                     for(Family fam : gedcom.getFamilies().values())
+                     {
+                        try
+                        {
+                           fam.findProblems(familyNames2Families, gedcom);
+                           fam.print(gedcom, out, isEncodeXML());
+                        } catch (PrintException e)
+                        {
+                           logger.warn(e);
+                        }
+                     }
+                     out.println("</gedcom>");
+                     out.close();
+                     // If there are warnings, then we want to update the status
+                     // of the GEDCOM and skip the page generation
+                     if (gedcom.getNumWarnings() > 0)
+                     {
+                        logger.warn(gedcom.getUserName() + ':' + gedcom.getFN() + " has "
+                              + gedcom.getNumWarnings() + " warning(s).");
+                        String reason;
+                        if (gedcom.isUnknownTag())
+                        {
+                           reason = "Unfamiliar tag(s) found in gedcom";
+                        } else
+                        {
+                           reason = "Post-processing exception occurred";
+                        }
+                        updateGedcom(STATUS_ERROR, gedID, reason);
+                        userTalker.sendErrorMessage(userName, gedcomName, gedID);
+                     } else
+                     {
+                        // It's time to use the api to actually update the gedcom
+
+                        // First let's free up the memory taken up by the gedcom object:
+                        gedcom = null;
+
+                        // Let's update the GEDCOM's status so that the
+                        // user may review it.
+                        System.out.print('\n');
+                        updateGedcom(Uploader.STATUS_REVIEW, gedID, "");
+                        if (!this.isUnitTesting())
+                        {
+                           userTalker.sendGedcomReviewMessage(userName, gedcomName, gedID);
+                        }
+                     }
                   }
-                  catch (Gedcom.PostProcessException e)
-                  {
-                     logger.warn(e.getMessage());
-                     //e.printStackTrace();
-                     hadException(e);
-                  } catch (GedcomElementWriter.ElementWriterException e)
-                  {
-                     logger.warn(e.getMessage());
-                     hadException(e);
-                  }
-                  /*
-                  // We no longer do this because too many GEDCOMs
-                  // did not have UIDs.
-                  catch (Gedcom.UIDException e)
-                  {
-                     updateGedcom(STATUS_REJECTED, gedID, "UID not present for all INDI and FAM objects");
-                  }*/
-               }
-               logger.info("Done with gedcom " + gedID);
-            } else
-            {
-               if (this.shouldStopWhenWithoutGedcom)
+               } catch (SAXException e)
                {
-                  break;
-               } // if there was an overlap, which yields -2, we don't want to wait.
-               else if (gedID == -1)
-               {
-                  Utils.sleep(60000);
+                  hadException(e);
                }
+               catch (Gedcom.PostProcessException e)
+               {
+                  logger.warn(e.getMessage());
+                  //e.printStackTrace();
+                  hadException(e);
+               } catch (GedcomElementWriter.ElementWriterException e)
+               {
+                  logger.warn(e.getMessage());
+                  hadException(e);
+               }
+               /*
+               // We no longer do this because too many GEDCOMs
+               // did not have UIDs.
+               catch (Gedcom.UIDException e)
+               {
+                  updateGedcom(STATUS_REJECTED, gedID, "UID not present for all INDI and FAM objects");
+               }*/
             }
+            logger.info("Done with gedcom " + gedID);
+            getNextGedcomID();
          }
          logger.info("Total number of places queried = " + numPlaces);
       } catch (Gedcom.GedcomException e)
@@ -906,46 +806,6 @@ public class Uploader {
       {
          logger.error("Unhandled SAX Exception");
          logger.error(e);
-      }
-      finally
-      {
-         // Since we don't know if loop will be called again,
-         // we cannot close these loggers. Instead, we flush them
-         Name.NameLogger.getInstance().flush();
-         Gedcom.PlaceLogger.getInstance().flush();
-      }
-   }
-
-   public static class MatchLogger {
-      private static MatchLogger ml = null;
-      private PrintWriter out = null;
-
-      public static MatchLogger getInstance() {
-         return ml;
-      }
-
-      public static void instantiate(String loggingOutput)
-            throws IOException {
-         ml = new MatchLogger(loggingOutput);
-      }
-
-      private MatchLogger(String loggingOutput) throws IOException {
-         out = new PrintWriter(new FileWriter(loggingOutput, true));
-      }
-
-      public void flush() {
-         out.flush();
-      }
-
-      public void logMatch(int gedcomId, String gedcomKey, String werelateTitle, float score)
-      {
-         logMatch(gedcomId + "|" + gedcomKey + '|' + werelateTitle + '|' + score);
-      }
-
-      public void logMatch(String line) {
-         // There has to be a difference in order for us
-         // to bother with printing this out.
-         out.println(line);
       }
    }
 
@@ -1019,7 +879,6 @@ public class Uploader {
                      Node docNode = matches.item(i);
                      float score = Float.parseFloat((String) scoreExpression.evaluate(docNode, XPathConstants.STRING));
                      String matchTitle = (String) titleExpression.evaluate(docNode, XPathConstants.STRING);
-                     MatchLogger.getInstance().logMatch(gedID, fam.getID(), matchTitle, score);
                      if ((isMedieval && score > medievalMatchScore) || (!isMedieval && score > minimumMatchScore))
                      {
                         if (matchesString.length() > 0)
@@ -1074,16 +933,6 @@ public class Uploader {
       if (!isUnitTesting())
       {
          userTalker.sendNotGedcom(userName, gedcomName);
-      }
-   }
-
-   public void touchDiedFile() throws IOException {
-      if(diedFile != null)
-      {
-         logger.error("Caught exception before teminating in order to touch " +
-               "the \'died_file' specified in the properties file.");
-         diedFile.createNewFile();
-         logger.error("Touched the died file");
       }
    }
 
@@ -2015,18 +1864,6 @@ public class Uploader {
       }
    }
 
-   // Location of the file which, if it exists,
-   // indicates that the program should halt execution
-   // instead of looking for the next GEDCOM to process
-   private String killMeFileName = null;
-   private String getKillMeFileName() {
-      return killMeFileName;
-   }
-   // returns true if the killMeFile exists
-   protected boolean shouldContinue() {
-      File file =  new File(getKillMeFileName());
-      return !file.exists();
-   }
    /**
     * @return the location of the directory
     *    where the gedcom files are outputted
@@ -2464,10 +2301,6 @@ public class Uploader {
          }
          catch (Exception e) {
             System.err.println("There was a problem while uploading");
-            if (cgp != null)
-            {
-               cgp.touchDiedFile();
-            }
             throw e;
          }
          finally {

@@ -278,66 +278,6 @@ public class Name extends ReferenceContainer {
       this.suffix = suffix;
    }
 
-   public static class NameLogger {
-      private static NameLogger nl = null;
-      private PrintWriter out = null;
-
-      public static NameLogger getInstance() {
-         return nl;
-      }
-
-      public static void instantiate(String loggingOutput)
-            throws IOException
-      {
-         nl = new NameLogger(loggingOutput);
-      }
-
-      private NameLogger (String loggingOutput) throws IOException
-      {
-         out = new PrintWriter(new FileWriter(loggingOutput));
-      }
-
-      public void flush() {
-         out.flush();
-      }
-
-      private String startGiven = null, startSurname = null, newName = null;
-      public void beginSetName(String newName, String startGiven, String startSurname)
-      {
-         this.newName = newName;
-         this.startGiven = startGiven;
-         this.startSurname = startSurname;
-      }
-      public void endSetName (String prefix, String newGiven, String newSurname, String suffix)
-      {
-         if (newGiven != null && !newGiven.equals(startGiven) ||
-               newSurname != null && !newSurname.equals(startSurname))
-         {
-            out.print(newName + '|');
-            if (prefix!= null)
-            {
-               out.print(prefix);
-            }
-            out.print('|');
-            if (newGiven != null)
-            {
-               out.print(newGiven);
-            }
-            out.print('|');
-            if (newSurname != null)
-            {
-               out.print(newSurname);
-            }
-            out.print('|');
-            if (suffix != null)
-            {
-               out.print(suffix);
-            }
-            out.print('\n');
-         }
-      }
-   }
-
    public  void appendPrefix(String newPrefix)
    {
       setPrefix(Uploader.append(getPrefix(), newPrefix, " "));
@@ -363,7 +303,6 @@ public class Name extends ReferenceContainer {
       AlternateName rval = null;
       if (!Utils.isEmpty(name))
       {
-         NameLogger.getInstance().beginSetName(name, getGiven(), getSurname());
          // We're going to do some preprocessing in order to
          // extract prefixes and suffixes.
          StringBuffer buf;
@@ -431,8 +370,6 @@ public class Name extends ReferenceContainer {
                }
             }
          }
-         NameLogger.getInstance().endSetName(getPrefix(), getGiven(), getSurname(), getSuffix());
-         NameLogger.getInstance().flush();
       }
       return rval;
    }

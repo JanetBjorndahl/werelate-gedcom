@@ -25,7 +25,6 @@ public class TestUploader extends TestCase {
       PageEdit.setLoginRequired(false);
       uploader = new Uploader(properties);
       uploader.setIgnoreUnexpectedTags(true);
-      uploader.setShouldStopWhenWithoutGedcom(true);
       uploader.setShouldCheckOverlap(false);
       uploader.executeQuery("DELETE FROM familytree_gedcom");
       uploader.executeQuery("ALTER TABLE familytree_gedcom AUTO_INCREMENT=0");
