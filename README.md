@@ -1,7 +1,7 @@
 werelate-gedcom
 ===============
 
-GEDCOM parser for WeRelate
+GEDCOM processor for WeRelate.  The parser in this project will eventually be replaced by the new GEDCOM parser.
 
 To build:
 * run `ant build`
