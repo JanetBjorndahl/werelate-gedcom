@@ -1,0 +1,5 @@
+.idea/*
+conf/gedcom.properties
+classes/*
+out/*
+*.iml

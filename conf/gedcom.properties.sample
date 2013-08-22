@@ -1,0 +1,38 @@
+# Configuration settings
+
+# input uploaded gedcoms
+gedcom_dir=
+# The inprocess dir holds the intermediate form of the XML,
+# before it has been reviewed by the user,
+# and before titles have been reserved.
+xml_inprocess=
+# final output xml dir
+xml_output=
+
+# Threshold to use to compare to the
+# score when deciding whether to save
+# potential matches found.
+# probably should be between 5.25 and 5.65
+match_threshold=5.25
+# lower threshold for matching really old stuff
+medieval_match_threshold=3.85
+
+# search server
+place_server=search.werelate.org:8080/solr
+
+# database username, password, and url
+db_username=
+db_passwd=
+db_url=jdbc:mysql://databasename:3306/wikidb
+
+# username, password, and server name so upload agent can leave messages
+wiki_username=
+wiki_password=
+wiki_server=www.werelate.org
+
+# email address for sending emails
+sysop=Dallan
+sysop_mail=dallan@werelate.org
+# Return address to appear on emails
+# (Default value : username@host)
+mail.from=dallan@werelate.org

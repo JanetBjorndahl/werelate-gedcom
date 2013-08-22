@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="gedcom" default="build">
+  
+  <!-- Compiler options -->
+  
+  <property name="compiler.debug" value="on"/>
+  <property name="compiler.generate.no.warnings" value="off"/>
+  <property name="compiler.args" value=""/>
+  <property name="compiler.max.memory" value="128m"/>
+
+  <!-- Project Libraries -->
+  
+  <path id="classpath">
+    <pathelement location="${basedir}/lib/commons-cli-1.0.jar"/>
+    <pathelement location="${basedir}/lib/commons-codec-1.3.jar"/>
+    <pathelement location="${basedir}/lib/commons-httpclient-3.1.jar"/>
+    <pathelement location="${basedir}/lib/commons-logging.jar"/>
+    <pathelement location="${basedir}/lib/icu4j_3_4.jar"/>
+    <pathelement location="${basedir}/lib/junit.jar"/>
+    <pathelement location="${basedir}/lib/log4j-1.3alpha-7.jar"/>
+    <pathelement location="${basedir}/lib/mail.jar"/>
+    <pathelement location="${basedir}/lib/mysql-connector-java-5.0.4-bin.jar"/>
+    <pathelement location="${basedir}/lib/xom-1.1b5.jar"/>
+  </path>
+
+  <!-- Paths -->
+
+  <property name="output.dir" value="${basedir}/classes"/>
+  <property name="testoutput.dir" value="${basedir}/out/test/Gedcom"/>
+
+  <path id="sourcepath">
+    <dirset dir="${basedir}">
+      <include name="src"/>
+    </dirset>
+  </path>
+  
+  <path id="test.sourcepath">
+    <dirset dir="${basedir}">
+      <include name="test"/>
+    </dirset>
+  </path>
+
+  <!-- Targets -->
+
+  <target name="compile.production" description="Compile production classes">
+    <mkdir dir="${output.dir}"/>
+    <javac destdir="${output.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" includeantruntime="false">
+      <compilerarg line="${compiler.args}"/>
+      <classpath refid="classpath"/>
+      <src refid="sourcepath"/>
+    </javac>
+  </target>
+  
+  <target name="compile.tests" depends="compile.production" description="compile test classes">
+    <mkdir dir="${testoutput.dir}"/>
+    <javac destdir="${testoutput.dir}" debug="${compiler.debug}" nowarn="${compiler.generate.no.warnings}" memorymaximumsize="${compiler.max.memory}" fork="true" includeantruntime="false">
+      <compilerarg line="${compiler.args}"/>
+      <classpath>
+        <path refid="classpath"/>
+        <pathelement location="${output.dir}"/>
+      </classpath>
+      <src refid="test.sourcepath"/>
+    </javac>
+  </target>
+  
+   <target name="compile" depends="compile.production, compile.tests" description="Compile"/>
+
+  <target name="clean" description="cleanup all">
+    <delete dir="${output.dir}"/>
+    <delete dir="${testoutput.dir}"/>
+  </target>
+  
+  <target name="build" depends="clean, compile" description="build all"/>
+</project>
