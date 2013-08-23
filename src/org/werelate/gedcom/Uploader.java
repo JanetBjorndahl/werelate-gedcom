@@ -520,10 +520,8 @@ public class Uploader {
          // Sets the gedID and gedStatus and defaultCountry values.
          getNextGedcomID();
          while (gedID > -1) {
-            String outputPath = getXml_output() + '/' + gedID + ".xml";
-            File file = new File(outputPath);
-            if (gedStatus == Uploader.STATUS_REGENERATE &&
-                  file.exists())
+            String xmlPath = getXml_output() + '/' + gedID + ".xml";
+            if (gedStatus == Uploader.STATUS_REGENERATE && (new File(xmlPath)).exists())
             {
                // Then we will just read in the gedcom from the path
                // instead of reparsing and re-reserving IDs for all
@@ -535,7 +533,7 @@ public class Uploader {
                   GedcomXML gedXML = new GedcomXML();
                   try
                   {
-                     gedXML.parse(outputPath);
+                     gedXML.parse(xmlPath);
                      readGedcomData(gedXML, true); // re-read gedcom data to set matchedIds and id2ReservedTitle
                      logger.info("Preparing the XML file to be generated");
                      gedXML.prepareForGeneration();
@@ -615,14 +613,19 @@ public class Uploader {
             } else if (gedStatus == STATUS_UPLOADED
                   || gedStatus==STATUS_IGNORE_OVERLAP)
             {
+               String gedPath = gedcomDir + '/' + gedID + ".ged";
+               if (!(new File(gedPath)).exists()) {
+                  // may not have been copied to the gedcom processor server yet; wait until next time
+                  break;
+               }
+
                try
                {
                   updateGedcom(STATUS_PROCESSING, gedID, "");
-                  String inputPath = gedcomDir + '/' + gedID + ".ged";
-                  outputPath = this.getXml_inprocess() + '/' + gedID + ".xml";
+                  String inprocessPath = this.getXml_inprocess() + '/' + gedID + ".xml";
                   StringBuffer placeXMLBuffer = new StringBuffer();
                   boolean isTrustedUploader = getIsTrustedUploader(userName, gedID);
-                  Gedcom gedcom = new Gedcom(this, inputPath, userName,
+                  Gedcom gedcom = new Gedcom(this, gedPath, userName,
                                              placeServer, defaultCountry, treeID, isTrustedUploader,
                                              isIgnoreUnexpectedTags(), placeXMLBuffer);
                   // If the GEDCOM appears to not be a GEDCOM,
@@ -644,7 +647,7 @@ public class Uploader {
                      logger.info("Setting isBornBeforeCutoff");
                      Person.setAllBornBeforeCutoff(gedcom);
                      logger.info("Done setting isBornBeforeCutoff");
-                     PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8"));
+                     PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(inprocessPath), "UTF-8"));
                      int numCitationOnlySources = 0;
                      for (Source source : gedcom.getSources().values()) {
                         if (!source.shouldPrint(gedcom)) {
