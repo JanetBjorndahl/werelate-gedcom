@@ -44,6 +44,7 @@ public class Uploader {
    // The source directory for Gedcoms
    private String gedcomDir = null;
    private String placeServer = null;
+   private String matchServer = null;
    private boolean unitTesting = false;
    private boolean stubMatching = false;
 
@@ -209,6 +210,7 @@ public class Uploader {
       // The hostname of the server the pages will be uploaded to
       wikiServer = properties.getProperty("wiki_server");
       placeServer = properties.getProperty("place_server");
+      matchServer = properties.getProperty("match_server");
       PageEdit.setWERELATE_URL("http://" + wikiServer);
       // Creates a new userTalker to send messages to users. The sysop user
       // specified here will receive notifications when there are problems with the GEDCOMs.
@@ -818,7 +820,7 @@ public class Uploader {
       // First let's find potential matches for this
       // family:
       String response;
-      String url = "http://" + placeServer + "/search";
+      String url = "http://" + matchServer + "/search";
       GetMethod m = new GetMethod(url);
       uploadNVP[0].setName("fl");
       uploadNVP[0].setValue("TitleStored,score");
