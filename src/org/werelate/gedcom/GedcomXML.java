@@ -363,7 +363,7 @@ public class GedcomXML {
    }
 
    private static final String stringXmlSection = "(<(mysource|person|family)>.*?</(mysource|person|family)>)|(<(mysource|person|family)/>)";
-   private static final Pattern pPageContentXml = Pattern.compile(stringXmlSection, Pattern.DOTALL);
+   public static final Pattern pPageContentXml = Pattern.compile(stringXmlSection, Pattern.DOTALL);
 
    /**
     * Should only be called after the titles have all been reserved, and the

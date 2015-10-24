@@ -587,6 +587,8 @@ public class Uploader {
                   gedXml.prepareForGeneration();
                   if (!isUnitTesting())
                   {
+                     logger.info("Add gedcom_source_matches");
+                     addGedcomSourceMatches(gedXml.getPages());
                      logger.info("Updating the family tree with matched titles.");
                      addPagesToFamilyTree(gedXml.getMatchedPagesXML(treeID));
                      logger.info("Generating the updated XML file");
@@ -688,6 +690,8 @@ public class Uploader {
                            try
                            {
                               if (source.shouldPrint(gedcom)) {
+                                 // set matching source page title
+                                 matchSource(source);
                                  source.print(gedcom, out, isEncodeXML());
                               }
                            } catch (PrintException e)
@@ -1279,6 +1283,143 @@ public class Uploader {
       }
    }
 
+   public void matchSource(Source source) {
+      String apiURL = getApiUrl();
+      PostMethod m = null;
+      try {
+         String author = Util.cleanGedcomSource(source.getAuthor());
+         String title = Util.cleanGedcomSource(source.getTitle());
+         String abbrev = Util.cleanGedcomSource(source.getAbbreviation());
+         m = new PostMethod(apiURL);
+         uploadNVP[0].setName("rs");
+         uploadNVP[0].setValue("wfMatchSource");
+         uploadNVP[1].setName("action");
+         uploadNVP[1].setValue("ajax");
+         uploadNVP[2].setName("rsargs");
+         uploadNVP[2].setValue("userID="+userID+"|gedcomID="+gedID+"|gedcomKey="+source.getID()+
+                 "|author="+author+"|title="+title+"|abbrev="+abbrev);
+         m.setRequestBody(uploadNVP);
+
+         if (!executeHttpMethod(m))
+         {
+            logger.warn("There was an error when executing method.");
+            return;
+         }
+         m.getResponseBodyAsString();
+         m.releaseConnection();
+         m = null;
+      } catch (IOException e) {
+         // ignore
+      } finally
+      {
+         if (m != null)
+         {
+            try {
+               m.getResponseBodyAsString();
+            } catch (IOException e) {
+               // ignore
+            }
+            m.releaseConnection();
+         }
+      }
+   }
+
+   public void addGedcomSourceMatches (Collection<Node> pages)
+   {
+      String apiURL = getApiUrl();
+      PostMethod m = null;
+      try
+      {
+         logger.info("Adding Gedcom source matches for " + gedID);
+         for (Node page : pages)
+         {
+            if (page.getAttributes().getNamedItem("namespace") != null &&
+                page.getAttributes().getNamedItem("namespace").getNodeValue().equals("104") &&
+                page.getAttributes().getNamedItem("title") != null &&
+                page.getAttributes().getNamedItem("title").getNodeValue().length() > 0)
+            {
+               NodeList nodes = page.getChildNodes();
+               for (int i = 0; i < nodes.getLength(); i++) {
+                  Node node = nodes.item(i);
+                  if (node.getNodeType() == Node.ELEMENT_NODE && "content".equals(node.getNodeName())) {
+                     String content = node.getTextContent();
+                     Matcher mXmlContent = GedcomXML.pPageContentXml.matcher(content);
+                     if (mXmlContent.find())
+                     {
+                        String xmlContentString = mXmlContent.group(0);
+                        try {
+                           String author = "";
+                           String title = "";
+                           String abbrev = "";
+                           Document contentDocument = db.parse(new InputSource(new StringReader(xmlContentString)));
+                           NodeList mysources = contentDocument.getChildNodes();
+                           for (int j = 0; j < mysources.getLength(); j++) {
+                              Node mysource = mysources.item(j);
+                              if (mysource.getNodeType() == Node.ELEMENT_NODE && "mysource".equals(mysource.getNodeName())) {
+                                 NodeList fields = mysource.getChildNodes();
+                                 for (int k = 0; k < fields.getLength(); k++) {
+                                    Node field = fields.item(k);
+                                    if (field.getNodeType() == Node.ELEMENT_NODE)
+                                    {
+                                       String nodeName = field.getNodeName();
+                                       String nodeText = Util.cleanGedcomSource(field.getTextContent());
+                                       if ("title".equals(nodeName)) {
+                                          title = nodeText;
+                                       }
+                                       else if ("author".equals(nodeName)) {
+                                          author = nodeText;
+                                       }
+                                       else if ("abbrev".equals(nodeName)) {
+                                          abbrev = nodeText;
+                                       }
+                                    }
+                                 }
+                              }
+                           }
+                           if (title.length() > 0 || abbrev.length() > 0) {
+                              String pageTitle = page.getAttributes().getNamedItem("title").getNodeValue().replace(' ', '_');
+                              m = new PostMethod(apiURL);
+                              uploadNVP[0].setName("rs");
+                              uploadNVP[0].setValue("wfAddGedcomSourceMatches");
+                              uploadNVP[1].setName("action");
+                              uploadNVP[1].setValue("ajax");
+                              uploadNVP[2].setName("rsargs");
+                              uploadNVP[2].setValue("userID="+userID+"|author="+author+"|title="+title+"|abbrev="+abbrev+"|pageTitle="+pageTitle);
+                              m.setRequestBody(uploadNVP);
+
+                              if (!executeHttpMethod(m))
+                              {
+                                 logger.warn("There was an error when executing method.");
+                                 return;
+                              }
+                              m.getResponseBodyAsString();
+                              m.releaseConnection();
+                              m = null;
+                           }
+                        } catch (SAXException e) {
+                           // ignore
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      } catch (IOException e) {
+         // ignore
+      } finally
+      {
+         if (m != null)
+         {
+            try {
+               m.getResponseBodyAsString();
+            } catch (IOException e) {
+               // ignore
+            }
+            m.releaseConnection();
+         }
+      }
+   }
+
    private static final Pattern pResponseStatus = Pattern.compile("<(add|generate|reserve|readGedcomData|updateTreePrimary|trustedUploader)[^>]+status=\"([^\">]+)\"");
    // This next method is responsible for sending the
    // contents of the gedcom's xml file to the wikiserver
@@ -1595,9 +1736,10 @@ public class Uploader {
                                                       " ORDER BY fg_status_date " +
                                                       "LIMIT 1");
 
-      sSelectFamilyTreeGedcom = conn.prepareStatement("SELECT fg_id, fg_status, ft_user, ft_tree_id, fg_gedcom_filename, ft_name, fg_default_country" +
+      sSelectFamilyTreeGedcom = conn.prepareStatement("SELECT fg_id, fg_status, ft_user, user_id, ft_tree_id, fg_gedcom_filename, ft_name, fg_default_country" +
                                                       " FROM familytree_gedcom " +
                                                       "INNER JOIN familytree ON fg_tree_id = ft_tree_id " +
+                                                      "INNER JOIN user ON ft_user = user_name " +
                                                       "WHERE fg_status = " +
                                                       STATUS_UPLOADED + " OR fg_status = " +
                                                       STATUS_CREATE_PAGES + " OR fg_status = " +
@@ -1902,8 +2044,9 @@ public class Uploader {
       return conn;
    }
 
-   //User name to access the wikidb
+   //User name and id to access the wikidb
    protected String userName = null;
+   protected int userID = 0;
    // The tree id of the current gedcom
    protected int treeID = -1;
    protected String treeName = null;
@@ -1959,10 +2102,11 @@ public class Uploader {
    }
 
    private void setGedcomSettings(ResultSet rs) throws IOException, SQLException {
-      treeName = rsReadString(rs, 6);
-      gedcomName = rsReadString(rs, 5);
-      defaultCountry = rs.getString(7);
-      treeID = rs.getInt(4);
+      treeName = rsReadString(rs, 7);
+      gedcomName = rsReadString(rs, 6);
+      defaultCountry = rs.getString(8);
+      treeID = rs.getInt(5);
+      userID = rs.getInt(4);
       userName = rsReadString(rs, 3);
       gedStatus = rs.getInt(2);
       gedID = rs.getInt(1);
