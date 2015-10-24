@@ -1728,9 +1728,10 @@ public class Uploader {
       sUpdateFamilyTreeGedcom = conn.prepareStatement("UPDATE familytree_gedcom " +
                                                       "SET fg_status = ?, fg_status_date = ?, " +
                                                       "fg_status_reason = ? WHERE fg_id = ?");
-      sSelectGedcomUploaded = conn.prepareStatement("SELECT fg_id, fg_status, ft_user, ft_tree_id, fg_gedcom_filename, ft_name, fg_default_country" +
+      sSelectGedcomUploaded = conn.prepareStatement("SELECT fg_id, fg_status, ft_user, user_id, ft_tree_id, fg_gedcom_filename, ft_name, fg_default_country" +
                                                       " FROM familytree_gedcom " +
                                                       "INNER JOIN familytree ON fg_tree_id = ft_tree_id " +
+                                                      "INNER JOIN user ON ft_user = user_name " +
                                                       "WHERE fg_status = " +
                                                       STATUS_UPLOADED +
                                                       " ORDER BY fg_status_date " +
