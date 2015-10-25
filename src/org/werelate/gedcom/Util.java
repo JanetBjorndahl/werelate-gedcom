@@ -389,6 +389,10 @@ public class Util {
    }
 
    public static String cleanGedcomSource(String s) {
+      if (s == null) {
+         return "";
+      }
+
       // convert Abbrevs
       for (PatternReplacement pr : ABBREV_REPLACEMENTS) {
          s = pr.pattern.matcher(s).replaceAll(pr.replacement);
