@@ -583,12 +583,17 @@ public class Uploader {
                   logger.info("Saving the updated XML file");
                   gedXml.save(new File(getXml_output() + '/' + gedID + ".xml"));
 
-                  logger.info("Preparing the XML file to be generated");
-                  gedXml.prepareForGeneration();
-                  if (!isUnitTesting())
-                  {
+                  // this must be done before prepareForGeneration because that function deletes the mysource title field for some reason
+                  if (!isUnitTesting()) {
                      logger.info("Add gedcom_source_matches");
                      addGedcomSourceMatches(gedXml.getPages());
+                  }
+
+                  logger.info("Preparing the XML file to be generated");
+                  gedXml.prepareForGeneration();
+
+                  if (!isUnitTesting())
+                  {
                      logger.info("Updating the family tree with matched titles.");
                      addPagesToFamilyTree(gedXml.getMatchedPagesXML(treeID));
                      logger.info("Generating the updated XML file");
