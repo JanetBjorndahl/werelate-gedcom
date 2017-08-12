@@ -451,7 +451,7 @@ public class Utils {
          catch (IllegalArgumentException e) {
             // ignore
          }
-         title = title.replace("http://", "").replaceAll("</?(i|b|u|strong|em)>", "").
+         title = title.replace("http://", "").replace("https://", "").replaceAll("</?(i|b|u|strong|em)>", "").
                  replace('<','(').replace('[','(').replace('{','(').replace('>',')').replace(']',')').replace('}', ')').
                        replaceAll("[#?+_|=&%]", " ").replaceAll("\\s+", " ").replaceAll("//+", "/").trim();
          while (title.length() > 0 && (title.charAt(0) == '.' || title.charAt(0) == '/')) {
@@ -595,7 +595,7 @@ public class Utils {
 
    public static String canonHost(String url) throws MalformedURLException {
        url = canonicalizeUrl(url);
-       if (!url.startsWith("http://"))
+       if (!url.startsWith("http://") && !url.startsWith("https://"))
        {
          url = "http://" + url;
        }

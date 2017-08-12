@@ -138,7 +138,7 @@ public class InterpretDiffFile {
    }
 
    private static void print(String namespace, String pageTitle, PrintWriter out, String diffSectionContent, String overallDiff) throws UnsupportedEncodingException {
-      String strUrl = "http://www.werelate.org/wiki/Special:GotoPage?namespace=" + namespace +
+      String strUrl = "https://www.werelate.org/wiki/Special:GotoPage?namespace=" + namespace +
             "&pagetitle=" + URLEncoder.encode(pageTitle, "UTF-8") + "&goto=Go+to+page";
       out.println("<br><a href=\"" + strUrl + "\">" + pageTitle + "</a><br>\n");
       out.print(Utils.encodeXML(removeJunk(diffSectionContent)).replaceAll("\n", "<br>\n"));
