@@ -165,10 +165,14 @@ public class GedcomXML {
 
                   // Let's make sure there is a title.
                   placeId2Standardized.put(id, matchTitle);
-                  placeNode.getAttributes().getNamedItem("title").setNodeValue(matchTitle);
-                  Node overrideNode = doc.createAttribute("override");
-                  overrideNode.setNodeValue("true");
-                  placeNode.getAttributes().setNamedItem(overrideNode);
+                  if (placeNode != null &&
+                      placeNode.getAttributes() != null &&
+                      placeNode.getAttributes().getNamedItem("title") != null) {
+                     placeNode.getAttributes().getNamedItem("title").setNodeValue(matchTitle);
+                     Node overrideNode = doc.createAttribute("override");
+                     overrideNode.setNodeValue("true");
+                     placeNode.getAttributes().setNamedItem(overrideNode);
+                  }
                }
             }
             else if (match)
