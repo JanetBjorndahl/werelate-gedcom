@@ -241,7 +241,9 @@ public abstract class PageEdit implements PageEditInterface {
       m.setRequestBody(nvp);
       try {
          client.executeMethod(m);
-         if (m.getStatusCode() == 302) {
+         int cnt = 0;
+         while (cnt < 5 && m.getStatusCode() >= 300 && m.getStatusCode() < 400) {
+            cnt++;
             url = m.getResponseHeader("Location").getValue();
             m = new PostMethod(url);
             m.setRequestBody(nvp);
@@ -305,6 +307,7 @@ public abstract class PageEdit implements PageEditInterface {
    private boolean postHTTP() {
       if (!loggedIn) if (!(loggedIn = login())) return false;
       String url = getPOSTURL(wrTitle);
+      String originalUrl = url;
       //logger.debug("Encoded URL:\n" + url);
       name2Val.put("wpSave", "Save page");
       PostMethod m = new PostMethod(url);
@@ -322,7 +325,9 @@ public abstract class PageEdit implements PageEditInterface {
       try {
          client.executeMethod(m);
          wrText = new String(m.getResponseBody());
-         if (m.getStatusCode() == 302) {
+         int cnt = 0;
+         while (cnt < 5 && m.getStatusCode() >= 300 && m.getStatusCode() < 400) {
+            cnt++;
             url = m.getResponseHeader("Location").getValue();
             m = new PostMethod(url);
             m.setRequestBody(nvp);
@@ -336,7 +341,7 @@ public abstract class PageEdit implements PageEditInterface {
             //logger.warn("I posted the update of " + wrTitle);
          }
          if (m.getStatusCode() != 200) {
-            logger.error("There was an unexpected status "+m.getStatusCode()+"when executing this url: "+url);
+            logger.error("There was an unexpected status "+m.getStatusCode()+"when executing this url: "+url+" original: "+originalUrl);
          }
          return true;
       } catch (HttpException e) {
