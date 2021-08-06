@@ -211,7 +211,7 @@ public class Uploader {
       wikiServer = properties.getProperty("wiki_server");
       placeServer = properties.getProperty("place_server");
       matchServer = properties.getProperty("match_server");
-      PageEdit.setWERELATE_URL("https://" + wikiServer);
+      PageEdit.setWERELATE_URL((wikiServer.startsWith("http") ? "" : "https://") + wikiServer);
       // Creates a new userTalker to send messages to users. The sysop user
       // specified here will receive notifications when there are problems with the GEDCOMs.
       userTalker = new UserTalker(properties);
@@ -1095,7 +1095,7 @@ public class Uploader {
          if (requestsList.size() > 0) {
             for (StringBuffer requests : requestsList.getBuffers())
             {
-               String responseString = sendIndexNumbersRequest("https://" + wikiServer + "/w/index.php",
+               String responseString = sendIndexNumbersRequest((wikiServer.startsWith("http") ? "" : "https://") + wikiServer + "/w/index.php",
                      "<gedcom>\n" + requests.toString() + "</gedcom>");
                Matcher m = pIndexResponse.matcher(responseString);
                boolean foundResponse = false;
@@ -1216,7 +1216,7 @@ public class Uploader {
 
    private String getApiUrl()
    {
-      return "https://" + wikiServer + "/w/index.php";
+      return (wikiServer.startsWith("http") ? "" : "https://") + wikiServer + "/w/index.php";
    }
 
    // Is also called for regenerate in order to set id2ExistingPageTitles
