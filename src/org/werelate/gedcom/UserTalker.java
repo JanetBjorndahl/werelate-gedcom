@@ -151,6 +151,9 @@ public class UserTalker extends PageEdit {
 
    private void sendEmail(String subject, String msg)
    {
+      if (sysopEmail == null || "".equals(sysopEmail) {
+         return
+      }
       //Here, no Authenticator argument is used (it is null).
       //Authenticators are used to prompt the user for user
       //name and password.
