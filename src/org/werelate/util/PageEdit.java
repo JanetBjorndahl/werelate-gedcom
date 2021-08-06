@@ -57,7 +57,10 @@ public abstract class PageEdit implements PageEditInterface {
    {
       WERELATE_AGENT = userPasswordProperties.getProperty("wiki_username");
       AGENT_PASSWD = userPasswordProperties.getProperty("wiki_password");
-      WERELATE_URL = "https://"+userPasswordProperties.getProperty("wiki_server");
+      WERELATE_URL = userPasswordProperties.getProperty("wiki_server");
+      if (!WERELATE_URL.startsWith("http")) {
+         WERELATE_URL = "https://"+WERELATE_URL;
+      }
    }
 
    public static class BadPageException extends Exception {
