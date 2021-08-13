@@ -2126,7 +2126,7 @@ public class Gedcom implements ContentHandler {
             {
                currEvent.addNote(popped.getID(), popped.getContent());
                break;
-            } else if (Gedcom.isSOUR(name))
+            } else if (Gedcom.isSOUR(name) && currSource != null)
             {
                currSource.addNote(popped.getID(), popped.getContent());
             }
