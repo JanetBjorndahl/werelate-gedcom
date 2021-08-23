@@ -3,6 +3,7 @@ package org.werelate.gedcom;
 import org.werelate.util.PlaceUtils;
 import org.werelate.util.Utils;
 import org.werelate.util.MultiMap;
+import org.werelate.util.EventDate;
 import org.apache.log4j.Logger;
 
 import java.awt.event.WindowFocusListener;
@@ -403,10 +404,22 @@ public class Family extends EventContainer{
             String sortDate = Utils.getDateSortKey(date);
 
             if (!Utils.isEmpty(date)) {
+               // Edit dates - error if the date cannot be interpreted; otherwise an alert if the date requires signficant reformating. Added Aug 2021 by Janet Bjorndahl
+               EventDate eventDate = new EventDate(date, event.eventType());
+               if (eventDate.editDate()) {
+                  if (eventDate.getSignificantReformat()) {
+                     addProblem("0" + event.eventType() + " date automatically reformated from \"" + date + "\" to \"" + eventDate.getFormatedDate() + "\"");
+                  }
+               }
+               else {
+                  addProblem("2" + eventDate.getErrorMessage() + ": " + date + " (Please write dates in \"d mmm yyyy\" format, e.g., 5 Jan 1900)");
+               }
+               /* Previous code
                Matcher m = Utils.AMBIGUOUS_DATE.matcher(date);
                if (m.find()) {
                   addProblem("1Write ambiguous date in \"D MMM YYYY\" format (eg 5 Jan 1900): "+date);
                }
+               */
             }
             if (Utils.isEmpty(sortDate))
             {

@@ -2,6 +2,7 @@ package org.werelate.gedcom;
 
 import org.werelate.util.Utils;
 import org.werelate.util.LineReader;
+import org.werelate.util.EventDate;
 import org.apache.log4j.Logger;
 
 import java.util.*;
@@ -284,7 +285,15 @@ public class Event extends ReferenceContainer implements Comparable {
          {
             ew.put("type", toString());
          }
-         ew.put("date", getAttribute("DATE"));
+         if (getAttribute("DATE") != null)                                          // date formatting for the XML added Aug 2021 by Janet Bjorndahl
+         {
+            EventDate eventDate = new EventDate(getAttribute("DATE"), normalizedTypeAtt != null ? normalizedTypeAtt : toString());              
+            ew.put("date", eventDate.formatDate());
+         } else 
+         {
+            ew.put("date", null);
+         }                                     
+         // ew.put("date", getAttribute("DATE"));                                   // replaced by above code Aug 2021
 
          /*if (this.getType() == Event.Type.ReferenceNumber && Gedcom.isID(getContent().trim()))
          {
@@ -626,7 +635,7 @@ public class Event extends ReferenceContainer implements Comparable {
                      Annulment,DivorceFiling,Engagement,MarriageBanns,
                      MarriageContract,MarriageLicense,MarriageNotice,
                      MarriageSettlement,Separation,
-                     Other
+                     Other, DNA                                            // DNA added Aug 2021 by Janet Bjorndahl
    }
    private Type type;
 
@@ -640,6 +649,8 @@ public class Event extends ReferenceContainer implements Comparable {
          "Estate Inventory", "Estate Settlement", "First Appearance", "Freedmans Bureau",
          "Hired Away", "Homestead", "Household List", "Plantation Journal", "Purchase",
          "Recapture", "Relocation", "Sale", "Slave List",
+         "Citizenship", "Employment", "Funeral", "Illness", "Living", "Obituary", "Pension", "Stillborn",    // These labels added Aug 2021 by Janet Bjorndahl 
+         "Marriage Notice", "Separation", "Degree"                         // Some desktop software doesn't use specific GEDCOM tags for Separation and Degree
    };
    private static Map <String, String> EVEN_TYPES_MAP = new HashMap<String, String>();
    static
@@ -697,6 +708,8 @@ public class Event extends ReferenceContainer implements Comparable {
             return "Cremation";
          case Degree:
             return "Degree";
+         case DNA:                          // added Aug 2021
+            return "DNA";            
          case Education:
             return "Education";
          case Emigration:
@@ -776,7 +789,7 @@ public class Event extends ReferenceContainer implements Comparable {
          case MarriageLicense:
             return "Marriage License";
          case MarriageNotice:
-            return "Marraige Notice";
+            return "Marriage Notice";
          case MarriageSettlement:
             return "Marriage Settlement";
          case Separation:
@@ -791,6 +804,20 @@ public class Event extends ReferenceContainer implements Comparable {
          default:
             return null;
       }
+   }
+   
+   // Returns WeRelate event type, for both standard and custom types 
+   public String eventType() {
+      String typeAtt = getAttribute("TYPE");
+      if (typeAtt != null) 
+      {
+         String customEventType = EVEN_TYPES_MAP.get(typeAtt.trim().toLowerCase());
+         if (customEventType != null)
+         {
+            return customEventType;
+         } 
+      }
+      return toString();
    }
 
    /**
@@ -852,7 +879,9 @@ public class Event extends ReferenceContainer implements Comparable {
       EVENT_TYPES.put("BAPM", Event.Type.Baptism);
       EVENT_TYPES.put("BAPT", Event.Type.Baptism);
       EVENT_TYPES.put("BAPTISM", Event.Type.Baptism);
+      EVENT_TYPES.put("CHRA", Event.Type.Baptism);              // added Aug 2021 (CHRA is the tag for Adult Christening)
       EVENT_TYPES.put("BARM", Event.Type.BarMitzvah);
+      EVENT_TYPES.put("BASM", Event.Type.BatMitzvah);           // added Aug 2021 (Bas Mitzvah is the same as Bat Mitzvah and used by the GEDCOM standard)
       EVENT_TYPES.put("BATM", Event.Type.BatMitzvah);
       EVENT_TYPES.put("BAR_MITZVAH", Event.Type.BarMitzvah);
       EVENT_TYPES.put("BLES", Event.Type.Blessing);
@@ -880,6 +909,8 @@ public class Event extends ReferenceContainer implements Comparable {
       EVENT_TYPES.put("DIVORCE", Event.Type.divorce);
       EVENT_TYPES.put("_DIV", Event.Type.divorce);
       EVENT_TYPES.put("DIVF", Event.Type.DivorceFiling);
+      EVENT_TYPES.put("DNA", Event.Type.DNA);                     // added Aug 2021
+      EVENT_TYPES.put("_DNA", Event.Type.DNA);                    // added Aug 2021
       EVENT_TYPES.put("_EXCM", Event.Type.Excommunication);
       EVENT_TYPES.put("EDUC", Event.Type.Education);
       EVENT_TYPES.put("EDUCATION", Event.Type.Education);
@@ -1044,7 +1075,6 @@ public class Event extends ReferenceContainer implements Comparable {
             || tagName.equals("PLACE")
             || tagName.equals("_Description2")
             || tagName.equals("_PRIM")
-            || tagName.equals("_SDATE")
             || tagName.equals("_HTITL")
             || tagName.equals("_WTITL");
    }
@@ -1064,6 +1094,7 @@ public class Event extends ReferenceContainer implements Comparable {
               || tagName.equals("PHON")
               || tagName.equals("PHONE")
               || tagName.equals("RIN")
+              || tagName.equals("_SDATE")            // Desktop program's sort date moved from Ignore list to Silently Ignore list Aug 2021 by Janet Bjorndahl
               || tagName.equals("_PRIM_CUTOUT")
               || tagName.equals("_POSITION")
               || tagName.equals("_PHOTO_RIN")
