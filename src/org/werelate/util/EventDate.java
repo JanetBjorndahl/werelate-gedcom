@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Calendar;
 import java.io.File;  // Import the File class
 import java.io.FileNotFoundException;  // Import this class to handle errors
-//import java.time.LocalDate;
-//import java.time.ZoneId;
 import java.util.Scanner; // Import the Scanner class to read text files
 import java.util.TimeZone;
 
@@ -131,16 +129,18 @@ public class EventDate {
     
   public boolean editDate() {
     int i;
-/*
+
+    Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("Pacific/Auckland"));      // New Zealand is unlikely to switch to the other side of the intl date line
+    int thisYear = cal.get(Calendar.YEAR);
+    int thisMonth = cal.get(Calendar.MONTH) + 1;
+    int thisDay = cal.get(Calendar.DAY_OF_MONTH);
+        
+/*  This uses the more up-to-date time classes, which don't seem to be supported here yet.  
     LocalDate today = LocalDate.now(ZoneId.of("Pacific/Auckland"));  // New Zealand (unlikely to move over intl date line)
     int thisYear = today.getYear();
     int thisMonth = today.getMonthValue();
     int thisDay = today.getDayOfMonth();
 */
-    // Temp code
-    int thisYear = 2021;
-    int thisMonth = 8;
-    int thisDay = 17;
             
     // Track if edited - edit only if and when needed.
     dateEdited = true;
