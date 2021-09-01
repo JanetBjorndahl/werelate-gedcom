@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;  // Import this class to handle errors
 import java.util.Scanner; // Import the Scanner class to read text files
 import java.util.TimeZone;
 
+// Written 2021 by Janet Bjorndahl as the Java equivalent of DateHandler.php
 public class EventDate {
   public String originalDate;
   public String formatedDate;
@@ -125,6 +126,20 @@ public class EventDate {
       parseDate();
     }
     return parsedEffectiveYear[0];
+  }
+
+  // Parse the date and return the first year in the date (which could be null).
+  // If it is a split year, return the effective year (e.g., 1624 for 1623/24).
+  public String getEffectiveFirstYear() {
+    if (!dateParsed) {
+      parseDate();
+    }
+    if (parsedEffectiveYear[1]!=null) {
+      return parsedEffectiveYear[1];
+    }
+    else {
+      return parsedEffectiveYear[0];
+    }
   }
     
   public boolean editDate() {
@@ -272,11 +287,14 @@ public class EventDate {
     dateParsed = true;    
 
     // If the date ends with text in parentheses (GEDCOM standard), remove the parenthetical portion and save it separately
-    splitDate = originalDate.split("\\(", 2);
-    if ( splitDate.length > 1 ) {
+    if (originalDate.contains("(") && originalDate.trim().endsWith(")")) {
+      splitDate = originalDate.split("\\(", 2);
       parsedText = "(" + splitDate[1].trim();
+      originalWithoutText = splitDate[0].trim();
     }
-    originalWithoutText = splitDate[0].trim();
+    else {
+      originalWithoutText = originalDate.trim();
+    }
 
     // Prepare: lower case; remove leading and trailing whitespace, and reduce internal strings of whitespace to one space each
     // Original date (minus any text portion removed above) is retained in case it needs to be returned in the text portion
