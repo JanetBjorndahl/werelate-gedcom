@@ -35,8 +35,8 @@ public class Family extends EventContainer{
 
    private static class DateStd {
       String date;
-      String stdDate;
-      DateStd(String date, String stdDate) {
+      Integer stdDate;                          // changed type from String Oct 2021 Janet Bjorndahl
+      DateStd(String date, Integer stdDate) {
          this.date = date;
          this.stdDate = stdDate;
       }
@@ -322,9 +322,11 @@ public class Family extends EventContainer{
 
    private void checkSpouseDates(Person spouse, boolean isHusband, int minMarriageDay, int maxMarriageDay) {
       String spousePronoun = isHusband ? "husband" : "wife";
-      String spouseStdBirthDate = Utils.getDateSortKey(spouse.getBirthDate());
-      int spouseMinBirthDay = Utils.getMinDay(spouseStdBirthDate, spouse.getBirthDate());
-      int spouseMaxBirthDay = Utils.getMaxDay(spouseStdBirthDate, spouse.getBirthDate());
+//      String spouseStdBirthDate = Utils.getDateSortKey(spouse.getBirthDate());
+//      int spouseMinBirthDay = Utils.getMinDay(spouseStdBirthDate, spouse.getBirthDate());
+      int spouseMinBirthDay = new EventDate(spouse.getBirthDate()).getMinDay();                        // method replaced Oct 2021 by Janet Bjorndahl
+//      int spouseMaxBirthDay = Utils.getMaxDay(spouseStdBirthDate, spouse.getBirthDate());
+      int spouseMaxBirthDay = new EventDate(spouse.getBirthDate()).getMaxDay();                        // method replaced Oct 2021 by Janet Bjorndahl
       if (spouseMaxBirthDay > 0 && minMarriageDay > 0 && minMarriageDay - spouseMaxBirthDay > 100 * 365) {
          addProblem("2Marriage is after " + spousePronoun + " is 100 years old");
       }
@@ -335,8 +337,9 @@ public class Family extends EventContainer{
          addProblem("2Marriage is before " + spousePronoun + " is 12 years old");
       }
 
-      String spouseStdDeathDate = Utils.getDateSortKey(spouse.getDeathDate());
-      int spouseMaxDeathDay = Utils.getMaxDay(spouseStdDeathDate, spouse.getDeathDate());
+//      String spouseStdDeathDate = Utils.getDateSortKey(spouse.getDeathDate());
+//      int spouseMaxDeathDay = Utils.getMaxDay(spouseStdDeathDate, spouse.getDeathDate());
+      int spouseMaxDeathDay = new EventDate(spouse.getDeathDate()).getMaxDay();                        // method replaced Oct 2021 by Janet Bjorndahl
       if (spouseMaxDeathDay > 0 && minMarriageDay > 0 && minMarriageDay > spouseMaxDeathDay) {
          addProblem("2Marriage occurs after the death of " + spousePronoun);
       }
@@ -348,12 +351,16 @@ public class Family extends EventContainer{
       if (parent != null)
       {
          // Let's see if the husband was born too early for this parent
-         String parentStdBirthDate = Utils.getDateSortKey(parent.getBirthDate());
-         String parentStdDeathDate = Utils.getDateSortKey(parent.getDeathDate());
-         int parentMinBirthDay = Utils.getMinDay(parentStdBirthDate, parent.getBirthDate());
-         int parentMaxBirthDay = Utils.getMaxDay(parentStdBirthDate, parent.getBirthDate());
-         int parentMinDeathDay = Utils.getMinDay(parentStdDeathDate, parent.getDeathDate());
-         int parentMaxDeathDay = Utils.getMaxDay(parentStdDeathDate, parent.getDeathDate());
+//         String parentStdBirthDate = Utils.getDateSortKey(parent.getBirthDate());
+//         String parentStdDeathDate = Utils.getDateSortKey(parent.getDeathDate());
+//         int parentMinBirthDay = Utils.getMinDay(parentStdBirthDate, parent.getBirthDate());
+//         int parentMaxBirthDay = Utils.getMaxDay(parentStdBirthDate, parent.getBirthDate());
+//         int parentMinDeathDay = Utils.getMinDay(parentStdDeathDate, parent.getDeathDate());
+//         int parentMaxDeathDay = Utils.getMaxDay(parentStdDeathDate, parent.getDeathDate());
+         int parentMinBirthDay = new EventDate(parent.getBirthDate()).getMinDay();                        // method replaced in these 4 rows Oct 2021 by Janet Bjorndahl
+         int parentMaxBirthDay = new EventDate(parent.getBirthDate()).getMaxDay();
+         int parentMinDeathDay = new EventDate(parent.getDeathDate()).getMinDay();
+         int parentMaxDeathDay = new EventDate(parent.getDeathDate()).getMaxDay();
          if (childMaxBirthDay > 0 && parentMinBirthDay > 0) {
             if (isHusband && childMaxBirthDay - parentMinBirthDay < 16 * 365) {
                addProblem("2Husband was less than 16 years old when " + childName + " was born");
@@ -394,14 +401,14 @@ public class Family extends EventContainer{
    }
 
    private DateStd getMarriageDateStd() {
-      String stdMarriageDate = null;
+      Integer stdMarriageDate = 0;              // changed type from String (set to null) Oct 2021 by Janet Bjorndahl
       String marriageDate = null;
 
       for (Event event : getEvents())
       {
          if (event.getType() != Event.Type.lds_spouse_sealing) {
             String date = event.getAttribute("DATE");
-            String sortDate = Utils.getDateSortKey(date);
+//            String sortDate = Utils.getDateSortKey(date);
 
             if (!Utils.isEmpty(date)) {
                // Edit dates - error if the date cannot be interpreted; otherwise an alert if the date requires signficant reformating. Added Aug 2021 by Janet Bjorndahl
@@ -420,7 +427,8 @@ public class Family extends EventContainer{
                   addProblem("1Write ambiguous date in \"D MMM YYYY\" format (eg 5 Jan 1900): "+date);
                }
                */
-            }
+//            }
+/* Previous code - alert for missing year - removed Oct 2021 because of date error message above.            
             if (Utils.isEmpty(sortDate))
             {
                if (Utils.isPartNumeric(date)) {
@@ -429,11 +437,14 @@ public class Family extends EventContainer{
             }
             else
             {
+*/            
                if (event.getType() == Event.Type.marriage) {
                   marriageDate = date;
-                  stdMarriageDate = sortDate;
+//                  stdMarriageDate = sortDate;
+                  stdMarriageDate = eventDate.getDateSortKey();        // method replaced Oct 2021 by Janet Bjorndahl
                }
-            }
+            }   
+//            }
          }
       }
       return new DateStd(marriageDate, stdMarriageDate);
@@ -462,9 +473,10 @@ public class Family extends EventContainer{
                    thisHusband.getName().givenSurnameEquals(otherHusband.getName()) &&
                    thisWife.getName().givenSurnameEquals(otherWife.getName()))
                {
-                  String stdMarriage = getMarriageDateStd().stdDate;
-                  String stdOther = possibleDuplicate.getMarriageDateStd().stdDate;
-                  if (!PlaceUtils.isEmpty(stdMarriage) && !PlaceUtils.isEmpty(stdOther) && stdMarriage.equals(stdOther)) {
+                  Integer stdMarriage = getMarriageDateStd().stdDate;                  // type changed from String on this and next line Oct 2021 by Janet Bjorndahl
+                  Integer stdOther = possibleDuplicate.getMarriageDateStd().stdDate;
+//                  if (!PlaceUtils.isEmpty(stdMarriage) && !PlaceUtils.isEmpty(stdOther) && stdMarriage.equals(stdOther)) {
+                  if (stdMarriage != 0 && stdOther != 0 && stdMarriage.equals(stdOther)) {    // changed Oct 2021 by Janet Bjorndahl
                      addProblem("3This family duplicates another family in your gedcom");
                   }
                   else {
@@ -514,9 +526,12 @@ public class Family extends EventContainer{
       // check problems with marriage date
       int minMarriageDay = 0;
       int maxMarriageDay = 0;
-      if (!Utils.isEmpty(marriage.stdDate)) {
-         minMarriageDay = Utils.getMinDay(marriage.stdDate, marriage.date);
-         maxMarriageDay = Utils.getMaxDay(marriage.stdDate, marriage.date);
+//      if (!Utils.isEmpty(marriage.stdDate)) {
+      if (marriage.stdDate != 0) {                                                 // changed Oct 2021 by Janet Bjorndahl
+//         minMarriageDay = Utils.getMinDay(marriage.stdDate, marriage.date);
+//         maxMarriageDay = Utils.getMaxDay(marriage.stdDate, marriage.date);
+         minMarriageDay = new EventDate(marriage.date).getMinDay();                // method replaced in these 2 lines Oct 2021 by Janet Bjorndahl
+         maxMarriageDay = new EventDate(marriage.date).getMaxDay();
 
          for (String husbandId : getHusbands())
          {
@@ -544,12 +559,16 @@ public class Family extends EventContainer{
          Person child = gedcom.getPeople().get(childObject.getId());
          if (child != null)
          {
-            String childStdBirthDate = Utils.getDateSortKey(child.getBirthDate());
-            String childStdDeathDate = Utils.getDateSortKey(child.getDeathDate());
-            if (!"".equals(childStdBirthDate) || !"".equals(childStdDeathDate)) {
-               int childMinBirthDay = Utils.getMinDay(childStdBirthDate, child.getBirthDate());
-               int childMaxBirthDay = Utils.getMaxDay(childStdBirthDate, child.getBirthDate());
-               int childMinDeathDay = Utils.getMinDay(childStdDeathDate, child.getDeathDate());
+//            String childStdBirthDate = Utils.getDateSortKey(child.getBirthDate());
+//            String childStdDeathDate = Utils.getDateSortKey(child.getDeathDate());
+//            if (!"".equals(childStdBirthDate) || !"".equals(childStdDeathDate)) {
+//               int childMinBirthDay = Utils.getMinDay(childStdBirthDate, child.getBirthDate());
+//               int childMaxBirthDay = Utils.getMaxDay(childStdBirthDate, child.getBirthDate());
+//               int childMinDeathDay = Utils.getMinDay(childStdDeathDate, child.getDeathDate());
+            if (!"".equals(child.getBirthDate()) || !"".equals(child.getDeathDate())) {     // method on these 4 lines changed Oct 2021 by Janet Bjorndahl
+               int childMinBirthDay = new EventDate(child.getBirthDate()).getMinDay();       
+               int childMaxBirthDay = new EventDate(child.getBirthDate()).getMaxDay();
+               int childMinDeathDay = new EventDate(child.getDeathDate()).getMinDay();
 
                if (childMinBirthDay > 0 && childMaxBirthDay > 0) {
                   if (child.getBirthDate(false) == null) {

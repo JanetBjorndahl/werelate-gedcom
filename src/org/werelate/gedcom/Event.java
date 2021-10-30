@@ -536,8 +536,10 @@ public class Event extends ReferenceContainer implements Comparable {
       {
          String thisDate = getAttribute("DATE");
          String otherDate = other.getAttribute("DATE");
-         String thisStdDate = Utils.modifyStdDate(Utils.getDateSortKey(thisDate), thisDate);
-         String otherStdDate = Utils.modifyStdDate(Utils.getDateSortKey(otherDate), otherDate);
+//         String thisStdDate = Utils.modifyStdDate(Utils.getDateSortKey(thisDate), thisDate);
+//         String otherStdDate = Utils.modifyStdDate(Utils.getDateSortKey(otherDate), otherDate);
+         Integer thisStdDate = new EventDate(thisDate).getDateSortKey();                 // method replaced Oct 2021 by Janet Bjorndahl
+         Integer otherStdDate = new EventDate(otherDate).getDateSortKey();               // method replaced Oct 2021 by Janet Bjorndahl
          if (!thisStdDate.equals(otherStdDate))
          {
             return thisStdDate.compareTo(otherStdDate);
