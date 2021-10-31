@@ -65,15 +65,16 @@ public class EventDate {
   private String   originalWithoutText;
   private String   errorMessage;
 
-  private boolean dateParsed = false;
   private boolean parseSuccessful = false;
   private boolean dateEdited = false;
   private boolean editSuccessful = false;
   private boolean discreteEvent = false;
  
+  // Constructors store the original date and parse it for use by other methods. 
   public EventDate(String date) {
     if ( date != null) {
       originalDate = date;
+      parseDate();
     }
     else {
       originalDate = "";
@@ -84,6 +85,7 @@ public class EventDate {
   public EventDate(String date, String eventType) {
     if ( date != null) {
       originalDate = date;
+      parseDate();
     }
     else {
       originalDate = "";
@@ -97,6 +99,7 @@ public class EventDate {
     return originalDate;
   }
 
+  // Return the formated date (whether or not there were errors).
   public String getFormatedDate() {
     if (!dateEdited) {
       editDate();
@@ -118,6 +121,7 @@ public class EventDate {
     return significantReformat;
   }
 
+  // Return the formated date if no errors, and the original date otherwise.
   public String formatDate() {
     if (!dateEdited) {
       editDate();
@@ -130,21 +134,15 @@ public class EventDate {
     }
   }
 
-  // Parse the date and return the last year in the date (which could be null).
+  // Return the last year in the date (which could be null). 
   // If it is a split year, return the effective year (e.g., 1624 for 1623/24).
   public String getEffectiveYear() {
-    if (!dateParsed) {
-      parseDate();
-    }
     return parsedEffectiveYear[0];
   }
 
-  // Parse the date and return the first year in the date (which could be null).
+  // Return the first year in the date (which could be null).
   // If it is a split year, return the effective year (e.g., 1624 for 1623/24).
   public String getEffectiveFirstYear() {
-    if (!dateParsed) {
-      parseDate();
-    }
     if (parsedEffectiveYear[1]!=null) {
       return parsedEffectiveYear[1];
     }
@@ -159,10 +157,6 @@ public class EventDate {
    * If the date is a date range, the start date is used.
    */
   public Integer getDateSortKey() {
-    if (!dateParsed) {
-      parseDate();
-    }
-
     // Use start date if a date range (only date if not).
     int i;
     if (parsedEffectiveYear[1]!=null) {
@@ -297,10 +291,6 @@ public class EventDate {
    * to the Gregorian calendar.
    */ 
   public Integer getMinDay() {
-    if (!dateParsed) {
-      parseDate();
-    }
-
     // If the date has a date range, use the start date. Otherwise, use the only date.
     int i;
     if (parsedEffectiveYear[1]!=null) {
@@ -346,7 +336,7 @@ public class EventDate {
     return dayNumber;
   }
 
-/* Calculate a maximum day number for an event date for the purpose of comparing 2 event dates.
+  /* Calculate a maximum day number for an event date for the purpose of comparing 2 event dates.
    * If the date has a date range, use the end date.
    * If the date lacks precision (e.g., is only a year), use the end of the time period it describes.
    * If the date is "after" a date, use 10 years after the given date.
@@ -358,10 +348,6 @@ public class EventDate {
    * to the Gregorian calendar.
    */ 
   public Integer getMaxDay() {
-    if (!dateParsed) {
-      parseDate();
-    }
-
     if (parsedEffectiveYear[0]==null) {
       return 0;
     }
@@ -396,7 +382,20 @@ public class EventDate {
 
     return dayNumber;
   }
-    
+
+  // Determine if the date includes an uncertain split year, e.g., 1565[/6?] or 1565[/66?]
+  public boolean uncertainSplitYear() {
+    Pattern regexUsy = Pattern.compile("\\[/\\d{1,2}\\?\\]");
+    Matcher usyDate = regexUsy.matcher(originalDate);
+    if (usyDate.find()) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  // Edit the date - this both formats the date for display and checks for errors not caught in parsing.     
   public boolean editDate() {
     int i;
 
@@ -405,7 +404,7 @@ public class EventDate {
     int thisMonth = cal.get(Calendar.MONTH) + 1;
     int thisDay = cal.get(Calendar.DAY_OF_MONTH);
         
-/*  This uses the more up-to-date time classes, which don't seem to be supported here yet.  
+/*  This uses the more up-to-date time classes, which don't seem to be supported by WeRelate yet.  
     LocalDate today = LocalDate.now(ZoneId.of("Pacific/Auckland"));  // New Zealand (unlikely to move over intl date line)
     int thisYear = today.getYear();
     int thisMonth = today.getMonthValue();
@@ -416,14 +415,12 @@ public class EventDate {
     dateEdited = true;
 
     formatedDate = "";
-
-    // Check for some overall errors and do a few fixes before dealing with each part of the parsed date
-    if (!dateParsed) {
-      parseDate();
-    }
-    if (!parseSuccessful) {                               // if parsing was unsuccessful, return
+    if (!parseSuccessful) {                               // if parsing (at instantiation) was unsuccessful, return
       return false;
     }
+
+    // Check for some overall errors and do a few fixes before dealing with each part of the parsed date
+
     // Error if a pair of modifiers or a pair of dates does not use modifiers Bet/and or From/to
     if ( !(parsedModifier[1]==null) || !(parsedYear[1]==null) ) {
       if ( parsedModifier[1]==null ||
@@ -517,11 +514,11 @@ public class EventDate {
     return editSuccessful;
   }
 
-  // This method parses the event date and returns results in an array, along with a possible error message.
-  // Modifier, day, month, year, suffix (e.g., BC) and effective year are returned in sub-arrays. If there are 2 dates (bet/and or from/to), 
-  // [0] is the second date and [1] is the first date (because the parsing works from the end to the beginning of the date).
-  // The results may also include a single parenthetical text portion. 
-  
+  /* Parse the event date into modifier, day, month, year and suffix (for each date if a date range) and parenthetical text portion.
+   * Also calculates the effective year (for each date if a date range) and set an error message if appropriate.
+   * If this is a date range (bet/and or from/to), [0] is the second date and [1] is the first date (because parsing
+   * works from the end to the beginning of the event date).
+   */
   private boolean parseDate() {
     boolean saveOriginal = false;
     boolean findSplitYear = false;
@@ -537,9 +534,6 @@ public class EventDate {
     String[] fields = new String[15];      // accommodate about twice as many fields as should exist in a date
     int[] dateStart = new int[2];
     significantReformat = false;
-
-    // Track if parsed: don't want to parse more than once, as parsing checks for null values of class variables.
-    dateParsed = true; 
     
     // If the date ends with text in parentheses (GEDCOM standard), remove the parenthetical portion and save it separately
     if (originalDate.contains("(") && originalDate.trim().endsWith(")")) {
@@ -941,10 +935,11 @@ public class EventDate {
     return ( (y2-y1) < 300 );
   }
 
-  // Note: Double-dating applies when the year started March 25 (not necessarily corresponding to when the Julian calendar was in use.)
-  // In England, the civil year started March 25 from the 12th century to 1752. From the 7th century to the 12th century, it started Dec 25.
-  // We're allowing split year dates starting in 1000 because some other countries started the year in March before England did.
-  // Most other countries started using Jan 1 as the beginning of the year around 1600 (Italy started about 1750).
+  /* Note: Double-dating applies when the year started March 25 (not necessarily corresponding to when the Julian calendar was in use).
+   * In England, the civil year started March 25 from the 12th century to 1752. From the 7th century to the 12th century, it started Dec 25.
+   * We're allowing split year dates starting in 1000 because some other countries started the year in March before England did.
+   * Most other countries started using Jan 1 as the beginning of the year around 1600 (Italy started about 1750).
+   */
   private static boolean isDoubleDating(int y) { 
     return (y >= 1000 && y <= 1752);
   }
@@ -1014,21 +1009,9 @@ public class EventDate {
     for (int x = 0; x < numbers.length; x++) {
       final char c = numbers[x];
       if ( c >= '0' && c <= '9' ) continue;
-      return false; // invalid
-    }
-    return true; // valid
-  }
-
-  // Additional method to determine if the date includes an uncertain split year, e.g., 1565[/6?] or 1565[/66?]
-  public boolean uncertainSplitYear() {
-    Pattern regexUsy = Pattern.compile("\\[/\\d{1,2}\\?\\]");
-    Matcher usyDate = regexUsy.matcher(originalDate);
-    if (usyDate.find()) {
-      return true;
-    }
-    else {
       return false;
     }
+    return true;
   }
  
 }
