@@ -30,6 +30,7 @@ public class EventDate {
   private static String[] gedcomDec = {"Dec", "dec", "december", "déc", "décembre", "decembre", "dez", "dezember", "dic", "diciembre", "des", "desember"};
   
   private static String[][] gedcomMonths = { gedcomJan, gedcomFeb, gedcomMar, gedcomApr, gedcomMay, gedcomJun, gedcomJul, gedcomAug, gedcomSep, gedcomOct, gedcomNov, gedcomDec };
+  private static int[] MONTH_OFFSETS = {0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
 
   // Modifier abbrebiations and full words in English (plus some scattered words in other languages)
   private static String[] gedcomAbt =  {"Abt", "abt", "about", "approx", "approximately", "vers", "omstreeks", "omstr", "omkring", "omk"};
@@ -64,19 +65,31 @@ public class EventDate {
   private String   originalWithoutText;
   private String   errorMessage;
 
-  private boolean dateParsed = false;
   private boolean parseSuccessful = false;
   private boolean dateEdited = false;
   private boolean editSuccessful = false;
   private boolean discreteEvent = false;
  
+  // Constructors store the original date and parse it for use by other methods. 
   public EventDate(String date) {
-    originalDate = date;
+    if ( date != null) {
+      originalDate = date;
+      parseDate();
+    }
+    else {
+      originalDate = "";
+    }
     discreteEvent = false;
   }
 
   public EventDate(String date, String eventType) {
-    originalDate = date;
+    if ( date != null) {
+      originalDate = date;
+      parseDate();
+    }
+    else {
+      originalDate = "";
+    }
     if (eventType != null) {
       discreteEvent = discreteEvents.contains(eventType);
     }
@@ -86,6 +99,7 @@ public class EventDate {
     return originalDate;
   }
 
+  // Return the formated date (whether or not there were errors).
   public String getFormatedDate() {
     if (!dateEdited) {
       editDate();
@@ -107,6 +121,7 @@ public class EventDate {
     return significantReformat;
   }
 
+  // Return the formated date if no errors, and the original date otherwise.
   public String formatDate() {
     if (!dateEdited) {
       editDate();
@@ -119,21 +134,15 @@ public class EventDate {
     }
   }
 
-  // Parse the date and return the last year in the date (which could be null).
+  // Return the last year in the date (which could be null). 
   // If it is a split year, return the effective year (e.g., 1624 for 1623/24).
   public String getEffectiveYear() {
-    if (!dateParsed) {
-      parseDate();
-    }
     return parsedEffectiveYear[0];
   }
 
-  // Parse the date and return the first year in the date (which could be null).
+  // Return the first year in the date (which could be null).
   // If it is a split year, return the effective year (e.g., 1624 for 1623/24).
   public String getEffectiveFirstYear() {
-    if (!dateParsed) {
-      parseDate();
-    }
     if (parsedEffectiveYear[1]!=null) {
       return parsedEffectiveYear[1];
     }
@@ -141,7 +150,252 @@ public class EventDate {
       return parsedEffectiveYear[0];
     }
   }
-    
+
+  /* This method is similar to getDateKey in DateHandler.php returning a numeric key.
+   * Return date as yyyymmdd for sorting purposes (return 0 if the date has no years).
+   * The result has 00 placeholders for missing month/day data and is adjusted based on bef/aft/bet/from/to modifiers.
+   * If the date is a date range, the start date is used.
+   */
+  public Integer getDateSortKey() {
+    // Use start date if a date range (only date if not).
+    int i;
+    if (parsedEffectiveYear[1]!=null) {
+      i = 1;
+    } 
+    else {
+      if (parsedEffectiveYear[0]!=null) {
+        i = 0;
+      }
+      else {
+        return 0;
+      }
+    }
+
+    // Create basic sort key. 00 placeholders for missing month and/or day. Negative number for BC dates.
+    int monthNum = parsedMonth[i]==null ? 0 : getMonthNumber(parsedMonth[i]);
+    Integer dateKey = Integer.parseInt(parsedEffectiveYear[i]) * 10000;
+    if (dateKey > 0) {
+      dateKey += monthNum * 100;
+    }
+    else {
+      dateKey -= monthNum * 100;
+    }
+    if (parsedDay[i]!=null) {
+      if (dateKey > 0) {
+        dateKey += Integer.parseInt(parsedDay[i]);
+      }
+      else {
+        dateKey -= Integer.parseInt(parsedDay[i]);
+      }
+    }
+
+    // If no modifier, done - return the basic sort key.
+    if (parsedModifier[i]==null) {
+      return dateKey;
+    }
+
+    // Adjust the date based on the modifier.
+
+    // Handle situation where year, month and day are all present.
+    // (Note that adjusting treats all years as leap years - good enough for non-wiki situations.)
+    if (parsedMonth[i]!=null && parsedDay[i]!=null) {
+      if ( parsedModifier[i].equals("Bef") || parsedModifier[i].equals("To")) {
+        // Handle subtracting one from first day of month.
+        if (parsedDay[i].equals("1")) {
+          if (monthNum==1) {
+            dateKey = (Integer.parseInt(parsedEffectiveYear[i])-1) * 10000 + 1231;  // Dec 31 of previous year
+          }
+          else {
+            dateKey = Integer.parseInt(parsedEffectiveYear[i]) * 10000 + (monthNum-1) * 100 + 31; // 31st of previous month
+            if (monthNum==3) {
+              dateKey -= 2;                                       // If previous month=Feb, set to 29 instead
+            }
+            else {
+              if (monthNum==5 || monthNum==7 || monthNum==10 || monthNum==12) {
+                dateKey -= 1;                                     // If previous month=Apr, Jun, Sep or Nov, set to 30
+              }
+            }
+          }
+        }
+        // All other dates, just subtract one from the previously constructed dateKey.
+        else {
+          dateKey -= 1;
+        }
+      }
+      if ( parsedModifier[i].equals("Aft") || parsedModifier[i].equals("Bet") ||
+           parsedModifier[i].equals("From") ) {
+        // Handle adding one to last day of month.
+        if (parsedDay[i].equals("31") ||
+              (parsedDay[i].equals("29") && monthNum==2) ||
+              (parsedDay[i].equals("30") && (monthNum==4 || monthNum==6 || monthNum==9 || monthNum==11))) {
+          if (monthNum==12) {
+            dateKey = (Integer.parseInt(parsedEffectiveYear[i])+1) * 10000 + 101;  // Jan 1 of next year
+          }
+          else {
+            dateKey = Integer.parseInt(parsedEffectiveYear[i]) * 10000 + (monthNum+1) * 100 + 1; // first of next month
+          }
+        }
+        // All other dates, just add one to the previously constructed dateKey.
+        else {
+          dateKey += 1;
+        }
+      }
+      return dateKey;
+    }
+      
+    // Handle situation where only year and month are present.
+    if (parsedMonth[i]!=null && parsedDay[i]==null) {
+      if ( parsedModifier[i].equals("Bef") || parsedModifier[i].equals("To") ) {
+        if (monthNum==1) {
+          dateKey = (Integer.parseInt(parsedEffectiveYear[i])-1) * 10000 + 1200;  // Dec of previous year
+        }
+        // All other months, subtract one month from the previously constructed dateKey.
+        else {
+          dateKey -= 100;
+        }
+      }
+      if ( parsedModifier[i].equals("Aft") || parsedModifier[i].equals("Bet") ||
+           parsedModifier[i].equals("From") ) {
+        if (monthNum==12) {
+          dateKey = (Integer.parseInt(parsedEffectiveYear[i])+1) * 10000 + 100;  // Jan of next year
+        }
+        // All other months, add one month to the previously constructed dateKey.
+        else {
+          dateKey += 100;
+        }
+      }
+      return dateKey;
+    }
+      
+    // Handle situation where only year is present. 
+    // Subtract or add one year from dateKey if applicable.
+    if ( parsedModifier[i].equals("Bef") || parsedModifier[i].equals("To") ) {
+      dateKey -= 10000;
+    } 
+    if ( parsedModifier[i].equals("Aft") || parsedModifier[i].equals("Bet") ||
+         parsedModifier[i].equals("From") ) {
+      dateKey += 10000;
+    }
+    return dateKey;
+  }
+
+  /* Calculate a minimum day number for an event date for the purpose of comparing 2 event dates.
+   * If the date has a date range, use the start date.
+   * If the date lacks precision (e.g., is only a year), use the beginning of the time period it describes.
+   * If the date is "before" a date, use 10 years before the given date.
+   * If the date is an approximated or estimated date, use 1 year, 91 days (3 months) or 10 days before the date
+   * (depending on the precision).
+   * 
+   * Note that this is a "good enough" calculation for the purpose of comparing dates within a few years
+   * of each other. As such, the calculation ignores leap years and doesn't account for the switch from the Julian
+   * to the Gregorian calendar.
+   */ 
+  public Integer getMinDay() {
+    // If the date has a date range, use the start date. Otherwise, use the only date.
+    int i;
+    if (parsedEffectiveYear[1]!=null) {
+      i = 1;
+    }
+    else {
+      if (parsedEffectiveYear[0]!=null) {
+        i = 0;
+      }
+      else {
+        return 0;
+      }
+    }
+
+    Integer dayNumber = Integer.parseInt(parsedEffectiveYear[i]) * 365;
+    if (parsedMonth[i]!=null) {
+      dayNumber += MONTH_OFFSETS[getMonthNumber(parsedMonth[i])];      
+      if (parsedDay[i]!=null) {
+        dayNumber += Integer.parseInt(parsedDay[i]);
+      }
+      else {
+        dayNumber += 1;  // Assume first of month when only the year and month are given
+      }
+    }
+    else {
+      dayNumber += 1;  // Assume 1 Jan when only the year is given
+    }
+
+    if (parsedModifier[i]!=null && parsedModifier[i].equals("Bef")) {
+      return dayNumber - 3650;
+    }
+
+    if (parsedModifier[i]!=null && (parsedModifier[i].equals("Abt") || parsedModifier[i].equals("Est"))) {
+      if (parsedDay[i]!=null) {
+        return dayNumber - 10;
+      }
+      if (parsedMonth[i]!=null) {
+        return dayNumber - 91;
+      }
+      return dayNumber - 365;
+    }
+
+    return dayNumber;
+  }
+
+  /* Calculate a maximum day number for an event date for the purpose of comparing 2 event dates.
+   * If the date has a date range, use the end date.
+   * If the date lacks precision (e.g., is only a year), use the end of the time period it describes.
+   * If the date is "after" a date, use 10 years after the given date.
+   * If the date is an approximated or estimated date, use 1 year, 91 days (3 months) or 10 days after the date
+   * (depending on the precision).
+   * 
+   * Note that this is a "good enough" calculation for the purpose of comparing dates within a few years
+   * of each other. As such, the calculation ignores leap years and doesn't account for the switch from the Julian
+   * to the Gregorian calendar.
+   */ 
+  public Integer getMaxDay() {
+    if (parsedEffectiveYear[0]==null) {
+      return 0;
+    }
+
+    Integer dayNumber = Integer.parseInt(parsedEffectiveYear[0]) * 365;
+    if (parsedMonth[0]!=null) {
+      if (parsedDay[0]==null) {
+        dayNumber += MONTH_OFFSETS[getMonthNumber(parsedMonth[0])+1];  // Assume end of month when day is missing 
+      }
+      else {
+        dayNumber += MONTH_OFFSETS[getMonthNumber(parsedMonth[0])];    // End of previous month
+        dayNumber += Integer.parseInt(parsedDay[0]);                   // plus this day
+      }
+    }
+    else {
+      dayNumber += 365;                                       // Assume end of year when only the year is given
+    }
+
+    if (parsedModifier[0]!=null && parsedModifier[0].equals("Aft")) {
+      return dayNumber + 3650;
+    }
+
+    if (parsedModifier[0]!=null && (parsedModifier[0].equals("Abt") || parsedModifier[0].equals("Est"))) {
+      if (parsedDay[0]!=null) {
+        return dayNumber + 10;
+      }
+      if (parsedMonth[0]!=null) {
+        return dayNumber + 91;
+      }
+      return dayNumber + 365;
+    }
+
+    return dayNumber;
+  }
+
+  // Determine if the date includes an uncertain split year, e.g., 1565[/6?] or 1565[/66?]
+  public boolean uncertainSplitYear() {
+    Pattern regexUsy = Pattern.compile("\\[/\\d{1,2}\\?\\]");
+    Matcher usyDate = regexUsy.matcher(originalDate);
+    if (usyDate.find()) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  // Edit the date - this both formats the date for display and checks for errors not caught in parsing.     
   public boolean editDate() {
     int i;
 
@@ -150,7 +404,7 @@ public class EventDate {
     int thisMonth = cal.get(Calendar.MONTH) + 1;
     int thisDay = cal.get(Calendar.DAY_OF_MONTH);
         
-/*  This uses the more up-to-date time classes, which don't seem to be supported here yet.  
+/*  This uses the more up-to-date time classes, which don't seem to be supported by WeRelate yet.  
     LocalDate today = LocalDate.now(ZoneId.of("Pacific/Auckland"));  // New Zealand (unlikely to move over intl date line)
     int thisYear = today.getYear();
     int thisMonth = today.getMonthValue();
@@ -161,14 +415,12 @@ public class EventDate {
     dateEdited = true;
 
     formatedDate = "";
-
-    // Check for some overall errors and do a few fixes before dealing with each part of the parsed date
-    if (!dateParsed) {
-      parseDate();
-    }
-    if (!parseSuccessful) {                               // if parsing was unsuccessful, return
+    if (!parseSuccessful) {                               // if parsing (at instantiation) was unsuccessful, return
       return false;
     }
+
+    // Check for some overall errors and do a few fixes before dealing with each part of the parsed date
+
     // Error if a pair of modifiers or a pair of dates does not use modifiers Bet/and or From/to
     if ( !(parsedModifier[1]==null) || !(parsedYear[1]==null) ) {
       if ( parsedModifier[1]==null ||
@@ -262,11 +514,11 @@ public class EventDate {
     return editSuccessful;
   }
 
-  // This method parses the event date and returns results in an array, along with a possible error message.
-  // Modifier, day, month, year, suffix (e.g., BC) and effective year are returned in sub-arrays. If there are 2 dates (bet/and or from/to), 
-  // [0] is the second date and [1] is the first date (because the parsing works from the end to the beginning of the date).
-  // The results may also include a single parenthetical text portion. 
-  
+  /* Parse the event date into modifier, day, month, year and suffix (for each date if a date range) and parenthetical text portion.
+   * Also calculates the effective year (for each date if a date range) and set an error message if appropriate.
+   * If this is a date range (bet/and or from/to), [0] is the second date and [1] is the first date (because parsing
+   * works from the end to the beginning of the event date).
+   */
   private boolean parseDate() {
     boolean saveOriginal = false;
     boolean findSplitYear = false;
@@ -282,10 +534,7 @@ public class EventDate {
     String[] fields = new String[15];      // accommodate about twice as many fields as should exist in a date
     int[] dateStart = new int[2];
     significantReformat = false;
-
-    // Track if parsed: don't want to parse more than once, as parsing checks for null values of class variables.
-    dateParsed = true;    
-
+    
     // If the date ends with text in parentheses (GEDCOM standard), remove the parenthetical portion and save it separately
     if (originalDate.contains("(") && originalDate.trim().endsWith(")")) {
       splitDate = originalDate.split("\\(", 2);
@@ -686,10 +935,11 @@ public class EventDate {
     return ( (y2-y1) < 300 );
   }
 
-  // Note: Double-dating applies when the year started March 25 (not necessarily corresponding to when the Julian calendar was in use.)
-  // In England, the civil year started March 25 from the 12th century to 1752. From the 7th century to the 12th century, it started Dec 25.
-  // We're allowing split year dates starting in 1000 because some other countries started the year in March before England did.
-  // Most other countries started using Jan 1 as the beginning of the year around 1600 (Italy started about 1750).
+  /* Note: Double-dating applies when the year started March 25 (not necessarily corresponding to when the Julian calendar was in use).
+   * In England, the civil year started March 25 from the 12th century to 1752. From the 7th century to the 12th century, it started Dec 25.
+   * We're allowing split year dates starting in 1000 because some other countries started the year in March before England did.
+   * Most other countries started using Jan 1 as the beginning of the year around 1600 (Italy started about 1750).
+   */
   private static boolean isDoubleDating(int y) { 
     return (y >= 1000 && y <= 1752);
   }
@@ -759,21 +1009,9 @@ public class EventDate {
     for (int x = 0; x < numbers.length; x++) {
       final char c = numbers[x];
       if ( c >= '0' && c <= '9' ) continue;
-      return false; // invalid
-    }
-    return true; // valid
-  }
-
-  // Additional method to determine if the date includes an uncertain split year, e.g., 1565[/6?] or 1565[/66?]
-  public boolean uncertainSplitYear() {
-    Pattern regexUsy = Pattern.compile("\\[/\\d{1,2}\\?\\]");
-    Matcher usyDate = regexUsy.matcher(originalDate);
-    if (usyDate.find()) {
-      return true;
-    }
-    else {
       return false;
     }
+    return true;
   }
  
 }

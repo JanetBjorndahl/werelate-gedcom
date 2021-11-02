@@ -151,22 +151,28 @@ public class Person extends EventContainer implements Comparable {
     */
    public int compareTo(Object o) {
       Person other = (Person) o;
-      String thisBirthDate = Utils.modifyStdDate(Utils.getDateSortKey(getBirthDate()), getBirthDate());
+//      String thisBirthDate = Utils.modifyStdDate(Utils.getDateSortKey(getBirthDate()), getBirthDate());
+      Integer thisBirthDate = new EventDate(getBirthDate()).getDateSortKey();                 // method replaced Oct 2021 by Janet Bjorndahl
+/*
       if (thisBirthDate == null)
       {
          thisBirthDate = "";
       }
-      String otherBirthDate = Utils.modifyStdDate(Utils.getDateSortKey(other.getBirthDate()), other.getBirthDate());
+*/      
+//      String otherBirthDate = Utils.modifyStdDate(Utils.getDateSortKey(other.getBirthDate()), other.getBirthDate());
+      Integer otherBirthDate = new EventDate(other.getBirthDate()).getDateSortKey();          // method replaced Oct 2021 by Janet Bjorndahl
+/*
       if (otherBirthDate == null)
       {
          otherBirthDate = "";
       }
+*/      
       int rval = thisBirthDate.compareTo(otherBirthDate);
       if (rval != 0)
       {
          return rval;
       }
-
+      
       // If the birthdates are the same, then
       // we'll use the name prepended to the id
       // as the sort key.
@@ -372,7 +378,8 @@ public class Person extends EventContainer implements Comparable {
          if (!Utils.isEmpty(date))
          {
             date = date.trim().toLowerCase();
-            int maxDay = Utils.getMaxDay(Utils.getDateSortKey(date), date);
+//            int maxDay = Utils.getMaxDay(Utils.getDateSortKey(date), date);
+            int maxDay = new EventDate(date).getMaxDay();                      // method replaced Oct 2021 by Janet Bjorndahl
             if (maxDay != 0 && maxDay < cutOffDay) {
                return true;
             }
@@ -392,7 +399,8 @@ public class Person extends EventContainer implements Comparable {
               event.getType() == Event.Type.alt_christening) &&
              !Utils.isEmpty(date)) {
             date = date.trim().toLowerCase();
-            int maxDay = Utils.getMaxDay(Utils.getDateSortKey(date), date);
+//            int maxDay = Utils.getMaxDay(Utils.getDateSortKey(date), date);
+            int maxDay = new EventDate(date).getMaxDay();                      // method replaced Oct 2021 by Janet Bjorndahl
             if (maxDay > cutOffDay) {
                return true;
             }
@@ -607,13 +615,15 @@ public class Person extends EventContainer implements Comparable {
     * @return true if the date is at least more than numYearsAgo, false otherwise
     */
    public static boolean isDateThatOld(String date, int numYearsAgo) {
-      int maxDay = Utils.getMaxDay(Utils.getDateSortKey(date), date);
+//      int maxDay = Utils.getMaxDay(Utils.getDateSortKey(date), date);
+      int maxDay = new EventDate(date).getMaxDay();                        // method replaced Oct 2021 by Janet Bjorndahl
       return (maxDay != 0 && CURR_YEAR - (maxDay / 365) >= numYearsAgo);
    }
 
    // Returns true if date is sooner than numYearsAgo
    private boolean isDateNewerThan(String date, int numYearsAgo) {
-      int minDay = Utils.getMinDay(Utils.getDateSortKey(date), date);
+//      int minDay = Utils.getMinDay(Utils.getDateSortKey(date), date);
+      int minDay = new EventDate(date).getMinDay();                        // method replaced Oct 2021 by Janet Bjorndahl
       return (minDay != 0 && CURR_YEAR - (minDay / 365) < numYearsAgo);
 //      logger.warn("isDateNewerThan date="+date+" minDay/365="+(minDay/365)+" curr_year="+CURR_YEAR+" numYearsAgo="+numYearsAgo+" return="+r);
    }
@@ -1134,14 +1144,16 @@ public class Person extends EventContainer implements Comparable {
 
    public void findProblems()
    {
-      String stdBirthDate = null;
-      String stdDeathDate = null;
-      String stdBurialDate = null;
+//      String stdBirthDate = null;
+//      String stdDeathDate = null;
+//      String stdBurialDate = null;
       String birthDate = null;
       String deathDate = null;
       String burialDate = null;
-      List <String> nonBirthStdDates = new ArrayList<String>();
-      List <String> nonDeathProbateStdDates = new ArrayList<String>();
+//      List <String> nonBirthStdDates = new ArrayList<String>();
+//      List <String> nonDeathProbateStdDates = new ArrayList<String>();
+      List <EventDate> nonBirthStdDates = new ArrayList<EventDate>();              // data type changed from String on this and next line Oct 2021 by Janet Bjorndahl
+      List <EventDate> nonDeathProbateStdDates = new ArrayList<EventDate>();
 
       // Let's find potential problems for this person.
       for (Event event : getEvents())
@@ -1153,7 +1165,7 @@ public class Person extends EventContainer implements Comparable {
              event.getType() != Event.Type.lds_endowment &&
              event.getType() != Event.Type.lds_child_sealing) {
             String date = event.getAttribute("DATE");
-            String sortDate = Utils.getDateSortKey(date);
+//            String sortDate = Utils.getDateSortKey(date);
 
 //            if (Utils.dateIsBefore700AD(date)) {
 //               if (event.getType() == Event.Type.birth || event.getType() == Event.Type.death) {
@@ -1178,7 +1190,8 @@ public class Person extends EventContainer implements Comparable {
                   addProblem("1Write ambiguous date in \"D MMM YYYY\" format (eg 5 Jan 1900): "+date);
                }
                */   
-            }
+//            }
+/* Previous code - alert for missing year - removed Oct 2021 because of date error message above.            
             if (Utils.isEmpty(sortDate))
             {
                if (Utils.isPartNumeric(date)) {
@@ -1187,30 +1200,31 @@ public class Person extends EventContainer implements Comparable {
             }
             else
             {
+*/
                if (event.getType() != Event.Type.Probate &&
                      event.getType() != Event.Type.death &&
                      event.getType() != Event.Type.alt_death &&
                      event.getType() != Event.Type.burial &&
                      event.getType() != Event.Type.Will &&
                      !(event.getType() == Event.Type.Other && "Alt. Death".equalsIgnoreCase(event.getDescription()))) {
-                  nonDeathProbateStdDates.add(sortDate);
+                  nonDeathProbateStdDates.add(eventDate);                          // variable changed from sortDate Oct 2021 by Janet Bjorndahl
                }
                if (event.getType() != Event.Type.birth &&
                      event.getType() != Event.Type.alt_birth &&
                      !(event.getType() == Event.Type.Other && "Alt. Birth".equalsIgnoreCase(event.getDescription()))) {
-                  nonBirthStdDates.add(sortDate);
+                  nonBirthStdDates.add(eventDate);                                 // variable changed from sortDate Oct 2021 by Janet Bjorndahl
                }
                switch (event.getType())
                {
                   case birth:
-                     stdBirthDate = sortDate;
+//                     stdBirthDate = sortDate;
                      birthDate = date;
                      break;
                   case death:
-                     stdDeathDate = sortDate;
+//                     stdDeathDate = sortDate;
                      deathDate = date;
                   case burial:
-                     stdBurialDate = sortDate;
+//                     stdBurialDate = sortDate;
                      burialDate = date;
                      break;
                }
@@ -1218,12 +1232,20 @@ public class Person extends EventContainer implements Comparable {
          }
       }
 
+/* code before refactoring
       int maxDeathDay = Utils.getMaxDay(stdDeathDate, deathDate);
       int minBurialDay = Utils.getMinDay(stdBurialDate, burialDate);
       int maxBurialDay = Utils.getMaxDay(stdBurialDate, burialDate);
       int minDeathDay = Utils.getMinDay(stdDeathDate, deathDate);
       int minBirthDay = Utils.getMinDay(stdBirthDate, birthDate);
       int maxBirthDay = Utils.getMaxDay(stdBirthDate, birthDate);
+*/
+      int minDeathDay = new EventDate(deathDate).getMinDay();            // method replaced in these 6 rows Oct 2021 by Janet Bjorndahl
+      int maxDeathDay = new EventDate(deathDate).getMaxDay();
+      int minBurialDay = new EventDate(burialDate).getMinDay();
+      int maxBurialDay = new EventDate(burialDate).getMaxDay();
+      int minBirthDay = new EventDate(birthDate).getMinDay();
+      int maxBirthDay = new EventDate(birthDate).getMaxDay();
 
       if (minDeathDay > 0 && maxBirthDay > 0 && minDeathDay - maxBirthDay > 115*365) {
          addProblem("2Death is more than 115 years after birth");
@@ -1239,8 +1261,9 @@ public class Person extends EventContainer implements Comparable {
       }
 
       if (minBirthDay > 0) {
-         for (String otherDate : nonBirthStdDates) {
-            int otherDay = Utils.getMaxDay(otherDate, null);
+         for (EventDate otherDate : nonBirthStdDates) {                // data type changed from String Oct 2021 by Janet Bjorndahl
+//            int otherDay = Utils.getMaxDay(otherDate, null);
+            int otherDay = otherDate.getMaxDay();                      // method replaced Oct 2021 by Janet Bjorndahl
             if (otherDay > 0 && otherDay < minBirthDay) {
                addProblem("2An event occurs before birth");
                break;
@@ -1249,9 +1272,10 @@ public class Person extends EventContainer implements Comparable {
       }
 
       if (maxDeathDay > 0) {
-         for (String otherDate : nonDeathProbateStdDates)
+         for (EventDate otherDate : nonDeathProbateStdDates)           // data type changed from String Oct 2021 by Janet Bjorndahl
          {
-            int otherDay = Utils.getMinDay(otherDate, null);
+//            int otherDay = Utils.getMinDay(otherDate, null);
+            int otherDay = otherDate.getMinDay();                      // method replaced Oct 2021 by Janet Bjorndahl
             if (otherDay != 0 && otherDay - maxDeathDay > 365)
             {
                addProblem("0An event occurs more than a year after death");
