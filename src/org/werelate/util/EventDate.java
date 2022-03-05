@@ -923,7 +923,7 @@ public class EventDate {
     }
     // If (either) date is a BC year, make the effective year a negative number
     for (i=0; i<=dateIndex && i<2; i++) {
-      if (parsedSuffix[i] != null && parsedSuffix[i].equals("BC")) {
+      if (parsedSuffix[i] != null && parsedSuffix[i].equals("BC") && parsedEffectiveYear[i] != null) {
         parsedEffectiveYear[i] = "-" + parsedEffectiveYear[i];
       }
     }
