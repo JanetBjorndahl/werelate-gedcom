@@ -1,7 +1,8 @@
 package org.werelate.gedcom;
 
 import org.werelate.util.Utils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 
@@ -16,7 +17,7 @@ import java.util.*;
  * Derived classes include Name, Citation, and Event
  */
 abstract public class ReferenceContainer {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.ReferenceContainer");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.ReferenceContainer");
 
    public void clearNotes() {
       this.notes.clear();

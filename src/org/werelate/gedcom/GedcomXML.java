@@ -7,7 +7,8 @@ import org.werelate.util.Utils;
 import org.werelate.util.PlaceUtils;
 import org.werelate.util.MultiMap;
 import org.werelate.util.ElementWriter;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.xml.xpath.*;
 import javax.xml.transform.*;
@@ -28,7 +29,7 @@ import java.io.*;
  */
 public class GedcomXML {
    private static final Logger logger =
-         Logger.getLogger("org.werelate.gedcom.GedcomXML");
+         LogManager.getLogger("org.werelate.gedcom.GedcomXML");
 
    private Map<String, Node> id2Page = new HashMap<String, Node>();
    private Map<String, Document> id2Content = new HashMap<String, Document>();

@@ -1,6 +1,7 @@
 package org.werelate.gedcom;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lm.gedml.GedcomParser;
 import org.werelate.util.Counter;
 import org.xml.sax.*;
@@ -26,7 +27,7 @@ import java.util.regex.Matcher;
  * this class produces.
  */
 public class Gedcom implements ContentHandler {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.Gedcom");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.Gedcom");
    private static final int CUTOFF_DAY = 1700 * 365;
    private static final int TRUSTED_CUTOFF_DAY = 1550 * 365;
 

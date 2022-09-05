@@ -8,7 +8,8 @@ import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.params.HttpMethodParams;
 import org.apache.commons.httpclient.methods.PostMethod;
 import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.util.*;
 import org.w3c.dom.Node;
 import org.w3c.dom.Document;
@@ -40,7 +41,7 @@ import javax.xml.transform.TransformerException;
  */
 public class Uploader {
    private static final Logger logger =
-         Logger.getLogger("org.werelate.gedcom.Upload");
+         LogManager.getLogger("org.werelate.gedcom.Upload");
    // The source directory for Gedcoms
    private String gedcomDir = null;
    private String placeServer = null;

@@ -1,7 +1,8 @@
 package org.werelate.gedcom;
 
 import org.werelate.util.Utils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.PrintWriter;
 import java.util.*;
@@ -18,7 +19,7 @@ import java.util.regex.Matcher;
  * and the content is put into the source citation when a person or family is printed.
  */
 public class Source extends EventContainer {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.Source");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.Source");
    private static final int LARGE_USERNAME_LEN = 40;
 
    private String Abbreviation = null;

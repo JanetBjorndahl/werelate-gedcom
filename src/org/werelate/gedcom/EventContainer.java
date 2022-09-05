@@ -2,7 +2,8 @@ package org.werelate.gedcom;
 
 import org.werelate.util.Utils;
 import org.werelate.util.MultiMap;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.print.PrintException;
 import java.util.*;
@@ -17,7 +18,7 @@ import java.util.*;
  * Person, Family, Source
  */
 public abstract class EventContainer extends TopObject {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.EventContainer");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.EventContainer");
    private Set<Event> events = new TreeSet<Event>();
 
    /**

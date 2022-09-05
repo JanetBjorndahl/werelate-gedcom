@@ -1,7 +1,8 @@
 package org.werelate.gedcom;
 
 import org.werelate.util.PageEdit;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.regex.Pattern;
 import java.net.URLEncoder;
@@ -19,7 +20,7 @@ import java.io.*;
  * Sends rote messages to user's talk pages
  */
 public class UserTalker extends PageEdit {
-   Logger logger = Logger.getLogger("org.werelate.gedcom");
+   Logger logger = LogManager.getLogger("org.werelate.gedcom");
    private static final String [] INPUTS = {
       "wpEdittime",
       "wpEditToken"

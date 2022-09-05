@@ -4,7 +4,8 @@ import org.werelate.util.PlaceUtils;
 import org.werelate.util.Utils;
 import org.werelate.util.MultiMap;
 import org.werelate.util.EventDate;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.awt.event.WindowFocusListener;
 import java.util.*;
@@ -21,7 +22,7 @@ import java.util.regex.Pattern;
  * to the XML file
  */
 public class Family extends EventContainer{
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.Family");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.Family");
 
    private static class MinMaxDate {
       int minBirthDay;

@@ -6,7 +6,8 @@ import java.net.URL;
 
 import org.xml.sax.*;
 import org.xml.sax.helpers.*;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.gedcom.Gedcom;
 import org.werelate.util.Utils;
 
@@ -244,7 +245,7 @@ public class GedcomParser implements XMLReader, Locator {
       return version;
    }
 
-   private static Logger logger = Logger.getLogger(GedcomParser.class);
+   private static Logger logger = LogManager.getLogger(GedcomParser.class);
 
    public static BufferedReader getBufferedReader(String systemId) throws IOException, SAXException {
       InputStream in = (new URL(systemId)).openStream();

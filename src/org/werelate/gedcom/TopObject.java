@@ -2,7 +2,8 @@ package org.werelate.gedcom;
 
 import org.werelate.util.Utils;
 import org.werelate.util.PlaceUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.PrintWriter;
 import java.util.List;
@@ -88,7 +89,7 @@ public abstract class TopObject {
    protected abstract int getNamespace();
 
    private static final Logger logger =
-         Logger.getLogger("org.werelate.gedcom.TopObject");
+         LogManager.getLogger("org.werelate.gedcom.TopObject");
    /**
     * Starts printing out the page, including the start of the
     * page tag

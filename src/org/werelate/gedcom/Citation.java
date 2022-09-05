@@ -1,7 +1,8 @@
 package org.werelate.gedcom;
 
 import org.werelate.util.Utils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
 
@@ -13,7 +14,7 @@ import java.util.Collection;
  * Represents source citations
  */
 public class Citation extends ReferenceContainer implements ReferencedObject {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.ReferencedObject");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.ReferencedObject");
    private String id = null;
    private String page = null;
    private String date = null;
