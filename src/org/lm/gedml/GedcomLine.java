@@ -1,6 +1,7 @@
 package org.lm.gedml;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.werelate.util.Utils;
 
 import java.util.regex.Pattern;
@@ -14,7 +15,7 @@ import java.util.regex.Matcher;
  * To change this template use File | Settings | File Templates.
  */
 public class GedcomLine {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.Gedcom");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.Gedcom");
    private static final String tagRegex = "(\\w+)";
    private static final String idRegex = "(@([^@]+)@)";
    private static final Pattern pGedcomLine = Pattern.compile(

@@ -1,6 +1,7 @@
 package org.werelate.util;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Map;
 import java.util.TreeMap;
@@ -13,7 +14,7 @@ import java.util.TreeMap;
  * To change this template use File | Settings | File Templates.
  */
 public abstract class ElementWriter {
-   private static Logger logger = Logger.getLogger(ElementWriter.class);
+   private static Logger logger = LogManager.getLogger(ElementWriter.class);
 
    public static class ElementWriterException extends RuntimeException {
       public ElementWriterException (String msg) {

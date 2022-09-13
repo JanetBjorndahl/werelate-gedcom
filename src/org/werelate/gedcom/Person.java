@@ -3,7 +3,8 @@ package org.werelate.gedcom;
 import org.werelate.util.PlaceUtils;
 import org.werelate.util.Utils;
 import org.werelate.util.EventDate;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.io.PrintWriter;
@@ -17,7 +18,7 @@ import java.util.regex.Matcher;
  * Represents a WeRelate person and a GEDCOM INDI
  */
 public class Person extends EventContainer implements Comparable {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.Person");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.Person");
    private static final int CURR_YEAR = (new GregorianCalendar()).get(Calendar.YEAR);
 
    String primaryChildOf = null;

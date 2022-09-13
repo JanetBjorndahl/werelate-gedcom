@@ -2,7 +2,8 @@ package org.werelate.gedcom;
 
 import org.werelate.util.Utils;
 import org.werelate.util.PlaceUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.Collection;
 import java.util.List;
@@ -19,7 +20,7 @@ import java.util.ArrayList;
  * the printing of this note
  */
 public class Note implements ReferencedObject {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.Note");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.Note");
 
    private Collection <org.werelate.gedcom.Citation> sourceCitations = new ArrayList<org.werelate.gedcom.Citation>();
 

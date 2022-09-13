@@ -11,7 +11,8 @@ import java.io.Reader;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.codec.language.DoubleMetaphone;
 import com.ibm.icu.text.Normalizer;
 import org.werelate.gedcom.Name;
@@ -21,7 +22,7 @@ import org.werelate.gedcom.Name;
  * Date: Oct 22, 2005
  */
 public class Utils {
-   private static Logger logger = Logger.getLogger(Utils.class);
+   private static Logger logger = LogManager.getLogger(Utils.class);
 
    /** max wiki title length */
    public static final int MAX_TITLE_LEN = 150;

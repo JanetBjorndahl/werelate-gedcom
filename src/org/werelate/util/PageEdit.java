@@ -1,7 +1,8 @@
 package org.werelate.util;
 
 import org.apache.commons.httpclient.cookie.CookiePolicy;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpMethod;
 import org.apache.commons.httpclient.HttpException;
@@ -23,6 +24,7 @@ import java.io.IOException;
  * This is an abstract class designed to be the interface through
  * which a Page is edited through the HTTP interface.
  */
+
 public abstract class PageEdit implements PageEditInterface {
    protected static String fromFile = null;
 
@@ -51,7 +53,7 @@ public abstract class PageEdit implements PageEditInterface {
    private static String WERELATE_AGENT = null;
    private static String AGENT_PASSWD = null;
    private static int RETRY_WAIT_MILIS = 20000;
-   private static Logger logger = Logger.getRootLogger();
+   private static Logger logger = LogManager.getRootLogger();
 
    public static void SetWerelateAgent(Properties userPasswordProperties)
    {

@@ -3,7 +3,8 @@ package org.werelate.gedcom;
 import org.werelate.util.Utils;
 import org.werelate.util.LineReader;
 import org.werelate.util.EventDate;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.util.*;
 import java.io.PrintWriter;
@@ -19,7 +20,7 @@ import java.io.InputStream;
  * because and Event can refer to notes, images, and source citations
  */
 public class Event extends ReferenceContainer implements Comparable {
-   private static final Logger logger = Logger.getLogger("org.werelate.gedcom.Event");
+   private static final Logger logger = LogManager.getLogger("org.werelate.gedcom.Event");
    /**
     *
     * @return the parent name to go into an image tag
