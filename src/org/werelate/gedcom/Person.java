@@ -257,12 +257,89 @@ public class Person extends EventContainer implements Comparable {
    private static final int LIVING_IF_CHILD_YOUNGER_THAN = 90;
    private static final int LIVING_IF_SIBLING_YOUNGER_THAN = 110;
 
-   private static final Set<String> LIVING_EVENT_WORDS =
-           new HashSet<String>(Arrays.asList("living","private","alive","details withheld"));
+   private static final String DIED_IN_INFANCY_DATE = "(in infancy)";
+   private static final String DIED_YOUNG_DATE = "(young)";
 
+   private static final Set<String> DIED_IN_INFANCY_WORDS =
+            new HashSet<String>(Arrays.asList("in infancy","died in infancy","infancy","infant","died as an infant","as an infant"));
+
+   private static final Set<String> STILLBORN_WORDS =
+            new HashSet<String>(Arrays.asList("stillborn","stillbirth"));
+
+   private static final Set<String> DIED_YOUNG_WORDS =
+            new HashSet<String>(Arrays.asList("young","died young","as a child","died as a child","in childhood","died in childhood"));
+
+   private static final Set<String> LIVING_EVENT_WORDS =
+            new HashSet<String>(Arrays.asList("living","private","alive","details withheld"));
+   
+   private boolean isDiedInInfancyText(String s) {
+      if (s != null) s = s.toLowerCase();
+      return !Utils.isEmpty(s) && DIED_IN_INFANCY_WORDS.contains(s);
+   }
+         
+   private boolean isStillbornText(String s) {
+      if (s != null) s = s.toLowerCase();
+      return !Utils.isEmpty(s) && STILLBORN_WORDS.contains(s);
+   }
+         
+   private boolean isDiedYoungText(String s) {
+      if (s != null) s = s.toLowerCase();
+      return !Utils.isEmpty(s) && DIED_YOUNG_WORDS.contains(s);
+   }
+         
    private boolean isDeadText(String s) {
       if (s != null) s = s.toLowerCase();
       return !Utils.isEmpty(s) && !LIVING_EVENT_WORDS.contains(s) && !"n".equals(s.toLowerCase());
+   }
+
+   /**
+    * Standardize a death event: Look for indication of an early death without a date and set death date to standard WeRelate phrase accordingly.
+    * @param event
+    */
+   private void standardizeEarlyDeath(Event event) {
+      if (event.getType() == Event.Type.death)
+      { 
+         // Check Cause of Death or contents for indication of an early death (only if there is nothing else in the field, to avoid possible misinterpretation).
+         // If such an indication exists, set death date to appropriate standard WeRelate phrase.
+         // If the person was stillborn, leave that description in Cause of Death or contents. Otherwise, remove the original text.
+         if (Utils.isEmpty(event.getAttribute("DATE")))
+         {
+            if (isDiedInInfancyText(event.getAttribute("CAUS")))
+            {
+               event.setAttribute("DAT", DIED_IN_INFANCY_DATE);
+               event.setAttribute("CAUS", "");
+            }
+            else if (isStillbornText(event.getAttribute("CAUS")))
+            {
+               event.setAttribute("DAT", DIED_IN_INFANCY_DATE);
+            }
+            else if (isDiedYoungText(event.getAttribute("CAUS")))
+            {
+               event.setAttribute("DAT", DIED_YOUNG_DATE);
+               event.setAttribute("CAUS", "");
+            }
+            else if (isDiedInInfancyText(event.getContent()))
+            {
+               event.setAttribute("DAT", DIED_IN_INFANCY_DATE);
+               event.setContent("","");
+            }
+            else if (isStillbornText(event.getContent()))
+            {
+               event.setAttribute("DAT", DIED_IN_INFANCY_DATE);
+            }
+            else if (isDiedYoungText(event.getContent()))
+            {
+               event.setAttribute("DAT", DIED_YOUNG_DATE);
+               event.setContent("","");
+            }
+         }
+         // If death date indicates Stillbirth, change to "(in infancy)" and append "Stillborn" to contents.
+         else if (isStillbornText(event.getAttribute("DATE")))
+         {
+            event.setAttribute("DAT", DIED_IN_INFANCY_DATE);
+            event.appendContent("Stillborn");
+         }
+      }
    }
 
    // Determines if this person is definitely
@@ -275,18 +352,39 @@ public class Person extends EventContainer implements Comparable {
          throws Gedcom.PostProcessException
    {
       boolean rval = false;
-      for (Event event : getEvents())
+      for (Event event : getEvents()) 
       {
-         if ((event.getType() == Event.Type.death ||
-               event.getType() == Event.Type.burial) &&
-               (isDeadText(event.getAttribute("DATE")) ||
-                isDeadText(event.getAttribute("PLAC")) ||
-                isDeadText(event.getContent()) ||
-                isDeadText(event.getDescription())))
+         standardizeEarlyDeath(event);
+//System.out.println("eventtype=" + event.eventType());    
+//System.out.println("Event.Type.Stillborn=" + Event.Type.Stillborn) ;     
+//System.out.println("getType=" + event.getType()); 
+         
+
+         // Is dead if a death or burial date is "(in infancy)" or "(young)" or is not an estimated date and not in the future.
+         if (event.getType() == Event.Type.death || 
+               event.getType() == Event.Type.burial)
+         {
+            if (!Utils.isEmpty(event.getAttribute("DATE")))
+            {
+               EventDate date = new EventDate(event.getAttribute("DATE"));
+               if (date.getFormatedDate().equals(DIED_IN_INFANCY_DATE) || 
+                     date.getFormatedDate().equals(DIED_YOUNG_DATE) ||
+                     (!date.formatDate().toLowerCase().contains("est") &&
+                        date.getLatestYear() != null && date.getLatestYear() <= CURR_YEAR)) 
+               {
+                  rval = true;
+                  break;
+               }
+            }
+         } 
+         // Is dead if stillborn (note: this is an "Other" type, which is what getType returns). 
+         else if (event.eventType().equals("Stillborn"))
          {
             rval = true;
             break;
-         } else if (event.getType() == Event.Type.birth
+         } 
+         // Is assumed to be dead if born more than a certain number of years ago (set by WeRelate policy).
+         else if (event.getType() == Event.Type.birth
                || event.getType() == Event.Type.christening
                || event.getType() == Event.Type.Baptism)
          {
@@ -335,6 +433,11 @@ public class Person extends EventContainer implements Comparable {
          if (!Utils.isEmpty(date))
          {
             date = date.trim().toLowerCase();
+// debug statements      
+//if (getID().equals("I44") && event.getType() == Event.Type.birth) System.out.println("hasLivingEvents date=" + date);  
+//if (getID().equals("I44") && event.getType() == Event.Type.birth) System.out.println("hasLivingEvents cutoffBirth=" + cutoffBirth);  
+//if (getID().equals("I44") && event.getType() == Event.Type.birth) System.out.println("hasLivingEvents isdatenewerthan=" + isDateNewerThan(date, cutoffBirth));  
+
             if (LIVING_EVENT_WORDS.contains(date) ||
                 ((event.getType() == Event.Type.alt_birth ||
                   event.getType() == Event.Type.birth ||
@@ -675,6 +778,8 @@ public class Person extends EventContainer implements Comparable {
          try
          {
             person.setLivingFirstPass(gedcom);
+// debug statements      
+//if (person.getID().equals("I44")) System.out.println("setLiving after first pass isLiving=" + person.getLiving());  
          } catch (Gedcom.PostProcessException e)
          {
             gedcom.warn("Caught post process exception while attempting to set person \"" +
@@ -694,6 +799,8 @@ public class Person extends EventContainer implements Comparable {
                   foundLiving = true;
                   person.setLivingSecondPass(gedcom);
                }
+// debug statements      
+//if (person.getID().equals("I44")) System.out.println("setLiving after second pass isLiving=" + person.getLiving());  
             } catch (Uploader.PrintException e)
             {
                gedcom.warn("Caught post process exception while attempting to set person \"" +
@@ -1462,7 +1569,7 @@ public class Person extends EventContainer implements Comparable {
    }
 
    // Searches for and returns a date for a death.
-   // Tries to find a birth event with a date first,
+   // Tries to find a death event with a date first,
    // and if it can't find one, then it looks for
    // a burial event with a date.
    public String getDeathDate () {
