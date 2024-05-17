@@ -10,8 +10,10 @@ import org.apache.logging.log4j.Logger;
 
 import nu.xom.Builder;
 import nu.xom.Element;
+import nu.xom.ParsingException;
 import java.util.*;
 import java.io.PrintWriter;
+import java.io.IOException;
 import java.util.regex.Matcher;
 
 /**
@@ -666,26 +668,29 @@ public class Person extends EventContainer implements Comparable {
 //      logger.warn("isDateNewerThan date="+date+" minDay/365="+(minDay/365)+" curr_year="+CURR_YEAR+" numYearsAgo="+numYearsAgo+" return="+r);
    }
 
-   private void setLivingFirstPass(Gedcom gedcom) 
-         throws Uploader.PrintException, Gedcom.PostProcessException
+   private void setLivingFirstPass(Gedcom gedcom)
+         throws Uploader.PrintException, Gedcom.PostProcessException, ParsingException, IOException
     {
       for (Event event : getEvents()) 
       {
          standardizeEarlyDeath(event);
       }
       String data = prepareDataForEdit(gedcom);
-      try 
-      {
-         Element root = SharedUtils.parseText(new Builder(), data, true).getRootElement();
-         PersonDQAnalysis personDQAnalysis = new PersonDQAnalysis(root, "title goes here");
-logger.info("call complete for person " + getID() + ", isdeadorexempt=" + personDQAnalysis.isDeadOrExempt() + "; data=" + data);  
-      } catch (Exception e)
-      {
-         gedcom.warn("Caught exception when editing person \"" + getID() + "\" in first pass: " + e);
-      }
-      if (isDefinitelyDead(gedcom))
+      Element root = SharedUtils.parseText(new Builder(), data, true).getRootElement();
+      PersonDQAnalysis personDQAnalysis = new PersonDQAnalysis(root, getID());
+      if (personDQAnalysis.isDeadOrExempt() == 1) 
       {
          setLiving(LivingStatus.DEAD);
+      }
+
+      // to do - adjust earliestBirth based on PersonDQAnalysis
+      // to do - capture issues
+      // to do - FamilyDQAnalysis for child_of_family
+
+
+
+      if (getLiving() == LivingStatus.UNKNOWN)
+      {
       } else if (isDefinitelyLiving(gedcom))
       {
          setLiving(LivingStatus.LIVING);
@@ -751,10 +756,10 @@ logger.info("call complete for person " + getID() + ", isdeadorexempt=" + person
          {
             gedcom.warn("Caught post process exception while attempting to set person \"" +
                         person.getID() + "\"'s isLiving status in first pass: " + e);
-         } catch (Uploader.PrintException p)
+         } catch (Exception e)
          {
-            gedcom.warn("Caught print exception while attempting to set person \"" +
-                        person.getID() + "\"'s isLiving status in first pass: " + p);
+            gedcom.warn("Caught exception while attempting to set person \"" +
+                        person.getID() + "\"'s isLiving status in first pass: " + e);
          }
       }
 
