@@ -2,10 +2,14 @@ package org.werelate.gedcom;
 
 import org.werelate.util.PlaceUtils;
 import org.werelate.util.Utils;
+import org.werelate.util.SharedUtils;
 import org.werelate.util.EventDate;
+import org.werelate.dq.PersonDQAnalysis;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import nu.xom.Builder;
+import nu.xom.Element;
 import java.util.*;
 import java.io.PrintWriter;
 import java.util.regex.Matcher;
@@ -342,12 +346,22 @@ public class Person extends EventContainer implements Comparable {
       }
    }
 
-   // Determines if this person is definitely
-   // dead based on whether this person has a death
-   // or burial event, a birth event which says the
-   // person was born more than DEAD_IF_OLDER_THAN
-   // years ago, or a marriage even more than
-   // DEAD_IF_MARRIED years ago.
+   // Reformats sufficient (minimal) gedcom data into XML format for editing using PersonDQAnalysis.
+   private String prepareDataForEdit(Gedcom gedcom) 
+         throws Uploader.PrintException, Gedcom.PostProcessException
+   {
+      StringBuffer buf = new StringBuffer();
+      StringBuffer sourceBuffer = new StringBuffer();
+      StringBuffer noteBuffer = new StringBuffer();
+      StringBuffer bodyText = new StringBuffer();
+      buf.append("<person>\n");
+      printNamesGender(buf, sourceBuffer, noteBuffer, gedcom);
+      printEvents(gedcom, buf, sourceBuffer, noteBuffer);
+      buf.append("</person>");
+      return buf.toString();
+   }
+
+   // Determines if this person is definitely dead based on death info and whether born more than DEAD_IF_OLDER_THAN years ago.
    private boolean isDefinitelyDead(Gedcom gedcom)
          throws Gedcom.PostProcessException
    {
@@ -355,10 +369,6 @@ public class Person extends EventContainer implements Comparable {
       for (Event event : getEvents()) 
       {
          standardizeEarlyDeath(event);
-//System.out.println("eventtype=" + event.eventType());    
-//System.out.println("Event.Type.Stillborn=" + Event.Type.Stillborn) ;     
-//System.out.println("getType=" + event.getType()); 
-         
 
          // Is dead if a death or burial date is "(in infancy)" or "(young)" or is not an estimated date and not in the future.
          if (event.getType() == Event.Type.death || 
@@ -377,7 +387,7 @@ public class Person extends EventContainer implements Comparable {
                }
             }
          } 
-         // Is dead if stillborn (note: this is an "Other" type, which is what getType returns). 
+         // Is dead if stillborn (note: eventType used because getType returns "Other"). 
          else if (event.eventType().equals("Stillborn"))
          {
             rval = true;
@@ -396,36 +406,11 @@ public class Person extends EventContainer implements Comparable {
             if (rval) break;
          }
       }
-
-      // Now we need to check the marriage dates
-      // of all of the families in which I am a
-      // spouse
-      if (!rval)
-      {
-         for (String famID : getSpouseOfFamilies())
-         {
-            Family fam = gedcom.getFamilies().get(famID);
-            if (fam != null)
-            {
-               for (Event event : fam.getEvents())
-               {
-                  // lots of different kinds of marriage events, so just look at all of them
-                  String date = event.getAttribute("DATE");
-                  if (!Utils.isEmpty(date))
-                  {
-                     if (rval = isDateThatOld(date, DEAD_IF_MARRIED)) break;
-                  }
-               }
-            } else
-            {
-               logger.info("While processing person " + getID() + "," +
-                     " Invalid Spouse of Family ID: " + famID);
-            }
-         }
-      }
       return rval;
    }
 
+   // Determines if this person is considered living based on the presence of certain words (living, private, etc.)
+   // or was born within a specified number of years, or has a death event with the indicator N.
    private boolean hasLivingEvents(int cutoffBirth) {
       for (Event event : getEvents())
       {
@@ -433,10 +418,6 @@ public class Person extends EventContainer implements Comparable {
          if (!Utils.isEmpty(date))
          {
             date = date.trim().toLowerCase();
-// debug statements      
-//if (getID().equals("I44") && event.getType() == Event.Type.birth) System.out.println("hasLivingEvents date=" + date);  
-//if (getID().equals("I44") && event.getType() == Event.Type.birth) System.out.println("hasLivingEvents cutoffBirth=" + cutoffBirth);  
-//if (getID().equals("I44") && event.getType() == Event.Type.birth) System.out.println("hasLivingEvents isdatenewerthan=" + isDateNewerThan(date, cutoffBirth));  
 
             if (LIVING_EVENT_WORDS.contains(date) ||
                 ((event.getType() == Event.Type.alt_birth ||
@@ -461,42 +442,6 @@ public class Person extends EventContainer implements Comparable {
       return false;
    }
 
-   private boolean hasEventsBeforeCutoff(int cutOffDay) {
-      for (Event event : getEvents())
-      {
-         String date = event.getAttribute("DATE");
-         if (!Utils.isEmpty(date))
-         {
-            date = date.trim().toLowerCase();
-            int maxDay = new EventDate(date).getMaxDay();                      // method replaced Oct 2021 by Janet Bjorndahl
-            if (maxDay != 0 && maxDay < cutOffDay) {
-               return true;
-            }
-         }
-      }
-      return false;
-   }
-
-   private boolean hasBirthEventAfterCutoff(int cutOffDay) {
-      for (Event event : getEvents())
-      {
-         String date = event.getAttribute("DATE");
-         if ((event.getType() == Event.Type.alt_birth ||
-              event.getType() == Event.Type.birth ||
-              event.getType() == Event.Type.Baptism ||
-              event.getType() == Event.Type.christening ||
-              event.getType() == Event.Type.alt_christening) &&
-             !Utils.isEmpty(date)) {
-            date = date.trim().toLowerCase();
-            int maxDay = new EventDate(date).getMaxDay();                      // method replaced Oct 2021 by Janet Bjorndahl
-            if (maxDay > cutOffDay) {
-               return true;
-            }
-         }
-      }
-      return false;
-   }
-
    public boolean hasOldBirth(int numYears) {
       for (Event event : getEvents())
       {
@@ -513,6 +458,38 @@ public class Person extends EventContainer implements Comparable {
       return false;
    }
 
+   //  TODO - place this in a function
+      // Now we need to check the marriage dates
+      // of all of the families in which I am a
+      // spouse 
+      /*
+      if (!rval)
+      {
+         for (String famID : getSpouseOfFamilies())
+         {
+            Family fam = gedcom.getFamilies().get(famID);
+            if (fam != null)
+            {
+               for (Event event : fam.getEvents())
+               {
+                  // lots of different kinds of marriage events, so just look at all of them
+                  String date = event.getAttribute("DATE");
+                  if (!Utils.isEmpty(date))
+                  {
+                     if (rval = isDateThatOld(date, DEAD_IF_MARRIED)) break;
+                  }
+               }
+            } else
+            {
+               logger.info("While processing person " + getID() + "," +
+                     " Invalid Spouse of Family ID: " + famID);
+            }
+         }
+      }
+      return rval;
+
+      */
+      
    public boolean hasOldRelatives(Gedcom gedcom) {
       for (String familyID : getChildOfFamilies()) {
          Family family = gedcom.getFamilies().get(familyID);
@@ -529,32 +506,7 @@ public class Person extends EventContainer implements Comparable {
       return false;
    }
 
-   // If someone named "Living" isn't marked living, change their name to Unknown
-   public static void setUnknownName(Gedcom gedcom) {
-      for (Person person : gedcom.getPeople().values())
-      {
-         if (!person.isLiving()) {
-            Name name = person.getName();
-            if (name != null) {
-               String given = name.getGiven();
-               String surname = name.getSurname();
-               if (!PlaceUtils.isEmpty(given) && given.equalsIgnoreCase("living")) {
-                  name.clearGiven();
-                  name.setGiven("Unknown");
-               }
-               if (PlaceUtils.isEmpty(given) && !PlaceUtils.isEmpty(surname) && surname.equalsIgnoreCase("living")) {
-                  name.clearSurname();
-                  name.clearGiven();
-                  name.setGiven("Unknown");
-               }
-            }
-         }
-      }
-   }
-
-   // This method assumes that the method
-   // "isDefinitelyDead" has already been
-   // run and returned false
+   // This method assumes that the method "isDefinitelyDead" has already been run and returned false
    private boolean isDefinitelyLiving(Gedcom gedcom) throws Gedcom.PostProcessException {
       boolean rval = false;
 
@@ -707,14 +659,30 @@ public class Person extends EventContainer implements Comparable {
       return (maxDay != 0 && CURR_YEAR - (maxDay / 365) >= numYearsAgo);
    }
 
-   // Returns true if date is sooner than numYearsAgo
+   // Returns true if date is more recent than numYearsAgo
    private boolean isDateNewerThan(String date, int numYearsAgo) {
       int minDay = new EventDate(date).getMinDay();                        // method replaced Oct 2021 by Janet Bjorndahl
       return (minDay != 0 && CURR_YEAR - (minDay / 365) < numYearsAgo);
 //      logger.warn("isDateNewerThan date="+date+" minDay/365="+(minDay/365)+" curr_year="+CURR_YEAR+" numYearsAgo="+numYearsAgo+" return="+r);
    }
 
-   private void setLivingFirstPass(Gedcom gedcom) throws Gedcom.PostProcessException {
+   private void setLivingFirstPass(Gedcom gedcom) 
+         throws Uploader.PrintException, Gedcom.PostProcessException
+    {
+      for (Event event : getEvents()) 
+      {
+         standardizeEarlyDeath(event);
+      }
+      String data = prepareDataForEdit(gedcom);
+      try 
+      {
+         Element root = SharedUtils.parseText(new Builder(), data, true).getRootElement();
+         PersonDQAnalysis personDQAnalysis = new PersonDQAnalysis(root, "title goes here");
+logger.info("call complete for person " + getID() + ", isdeadorexempt=" + personDQAnalysis.isDeadOrExempt() + "; data=" + data);  
+      } catch (Exception e)
+      {
+         gedcom.warn("Caught exception when editing person \"" + getID() + "\" in first pass: " + e);
+      }
       if (isDefinitelyDead(gedcom))
       {
          setLiving(LivingStatus.DEAD);
@@ -731,7 +699,8 @@ public class Person extends EventContainer implements Comparable {
    // living or dead.
    //
    // Mark a living person's unknown-status spouse, children, and siblings as living
-   private void setLivingSecondPass(Gedcom gedcom) throws Uploader.PrintException, Gedcom.PostProcessException
+   private void setLivingSecondPass(Gedcom gedcom) 
+         throws Uploader.PrintException, Gedcom.PostProcessException
    {
       if (getLiving() == LivingStatus.LIVING) {
          markFamilyMembersLiving(getChildOfFamilies(), gedcom, false);
@@ -778,12 +747,14 @@ public class Person extends EventContainer implements Comparable {
          try
          {
             person.setLivingFirstPass(gedcom);
-// debug statements      
-//if (person.getID().equals("I44")) System.out.println("setLiving after first pass isLiving=" + person.getLiving());  
          } catch (Gedcom.PostProcessException e)
          {
             gedcom.warn("Caught post process exception while attempting to set person \"" +
                         person.getID() + "\"'s isLiving status in first pass: " + e);
+         } catch (Uploader.PrintException p)
+         {
+            gedcom.warn("Caught print exception while attempting to set person \"" +
+                        person.getID() + "\"'s isLiving status in first pass: " + p);
          }
       }
 
@@ -799,8 +770,6 @@ public class Person extends EventContainer implements Comparable {
                   foundLiving = true;
                   person.setLivingSecondPass(gedcom);
                }
-// debug statements      
-//if (person.getID().equals("I44")) System.out.println("setLiving after second pass isLiving=" + person.getLiving());  
             } catch (Uploader.PrintException e)
             {
                gedcom.warn("Caught post process exception while attempting to set person \"" +
@@ -817,10 +786,70 @@ public class Person extends EventContainer implements Comparable {
       }
    }
 
+   // If someone named "Living" isn't marked living, change their name to Unknown
+   public static void setUnknownName(Gedcom gedcom) {
+      for (Person person : gedcom.getPeople().values())
+      {
+         if (!person.isLiving()) {
+            Name name = person.getName();
+            if (name != null) {
+               String given = name.getGiven();
+               String surname = name.getSurname();
+               if (!PlaceUtils.isEmpty(given) && given.equalsIgnoreCase("living")) {
+                  name.clearGiven();
+                  name.setGiven("Unknown");
+               }
+               if (PlaceUtils.isEmpty(given) && !PlaceUtils.isEmpty(surname) && surname.equalsIgnoreCase("living")) {
+                  name.clearSurname();
+                  name.clearGiven();
+                  name.setGiven("Unknown");
+               }
+            }
+         }
+      }
+   }
+
    private boolean bornBeforeCutoff = false;
    public boolean isBornBeforeCutoff() {
       return bornBeforeCutoff;
    }
+   
+   private boolean hasEventsBeforeCutoff(int cutOffDay) {
+      for (Event event : getEvents())
+      {
+         String date = event.getAttribute("DATE");
+         if (!Utils.isEmpty(date))
+         {
+            date = date.trim().toLowerCase();
+            int maxDay = new EventDate(date).getMaxDay();                      // method replaced Oct 2021 by Janet Bjorndahl
+            if (maxDay != 0 && maxDay < cutOffDay) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
+   private boolean hasBirthEventAfterCutoff(int cutOffDay) {
+      for (Event event : getEvents())
+      {
+         String date = event.getAttribute("DATE");
+         if ((event.getType() == Event.Type.alt_birth ||
+              event.getType() == Event.Type.birth ||
+              event.getType() == Event.Type.Baptism ||
+              event.getType() == Event.Type.christening ||
+              event.getType() == Event.Type.alt_christening) &&
+             !Utils.isEmpty(date)) {
+            date = date.trim().toLowerCase();
+            int maxDay = new EventDate(date).getMaxDay();                      // method replaced Oct 2021 by Janet Bjorndahl
+            if (maxDay > cutOffDay) {
+               return true;
+            }
+         }
+      }
+      return false;
+   }
+
    // set this person and all ancestors born before cutoff
    public void setBornBeforeCutoff(Gedcom gedcom) {
       bornBeforeCutoff = true;
@@ -1371,70 +1400,10 @@ public class Person extends EventContainer implements Comparable {
          StringBuffer buf = new StringBuffer();
          StringBuffer sourceBuffer = new StringBuffer();
          StringBuffer noteBuffer = new StringBuffer();
-         buf.append("<person>\n");
-         if (getName() != null)
-         {
-            getName().print(buf, sourceBuffer, noteBuffer, this, gedcom);
-         } else
-         {
-            (new Name()).print(buf, sourceBuffer, noteBuffer, this, gedcom);
-         }
-         // Now let's print the alternate names:
-         printAltNames(buf, sourceBuffer, noteBuffer, gedcom);
-         if (getGender() != Gender.unknown)
-         {
-            buf.append(Uploader.printTag("gender", getGenderString()));
-         } else
-         {
-            buf.append(Uploader.printTag("gender", "?"));
-         }
          StringBuffer bodyText = new StringBuffer();
-         if (!Utils.isEmpty(primaryChildOf))
-         {
-            Family fam = gedcom.getFamilies().get(primaryChildOf);
-            if (fam != null)
-            {
-               fam.printChildOfFamily(buf);
-            } else
-            {
-               logger.info("Primary child of family id \"" + primaryChildOf + "\" is not valid");
-               bodyText.append("Missing primary child of family with GEDCOM ID: " + primaryChildOf);
-            }
-         }
-
-         for (String famID1 : getChildOfFamilies())
-         {
-            if (!famID1.equals(primaryChildOf))
-            {
-               Family fam1 = gedcom.getFamilies().get(famID1);
-               if (fam1 != null)
-               {
-                  fam1.printChildOfFamily(buf);
-               } else{
-                  logger.info ("When printing person " + getID() +
-                        ", child of family id: \"" + famID1 + "\" is not valid");
-                  Utils.prependParagraphBreak(bodyText);
-                  bodyText.append("Missing child of family with GEDCOM ID: " + famID1);
-               }
-            }
-         }
-
-         for (String famID : getSpouseOfFamilies())
-         {
-            Family fam = gedcom.getFamilies().get(famID);
-            if (fam != null)
-            {
-               GedcomElementWriter ew = new GedcomElementWriter("spouse_of_family");
-               ew.put("id", fam.getID());
-               ew.write(buf);
-            } else
-            {
-               logger.info("When printing person " + getID() +
-                     ", spouse of family id: \"" + famID + "\" is not valid");
-               Utils.prependParagraphBreak(bodyText);
-               bodyText.append("Missing spouse of family with GEDCOM ID: " + famID);
-            }
-         }
+         buf.append("<person>\n");
+         printNamesGender(buf, sourceBuffer, noteBuffer, gedcom);
+         printFamilies(buf, sourceBuffer, bodyText, gedcom);
          if (!Utils.isEmpty(pedi) && !Utils.isEmpty(pediID))
          {
             Family fam = gedcom.getFamilies().get(pediID);
@@ -1485,6 +1454,28 @@ public class Person extends EventContainer implements Comparable {
       out.println("</page>");
    }
 
+   // Prints this person's names and gender.
+   private void printNamesGender(StringBuffer buf, StringBuffer sourceBuffer, StringBuffer noteBuffer, Gedcom gedcom)
+         throws Uploader.PrintException, Gedcom.PostProcessException
+   {
+      if (getName() != null)
+      {
+         getName().print(buf, sourceBuffer, noteBuffer, this, gedcom);
+      } else
+      {
+         (new Name()).print(buf, sourceBuffer, noteBuffer, this, gedcom);
+      }
+      // Now let's print the alternate names:
+      printAltNames(buf, sourceBuffer, noteBuffer, gedcom);
+      if (getGender() != Gender.unknown)
+      {
+         buf.append(Uploader.printTag("gender", getGenderString()));
+      } else
+      {
+         buf.append(Uploader.printTag("gender", "?"));
+      }
+   }
+
    // Prints the alternate names attached to this person
    private void printAltNames(StringBuffer buf, StringBuffer sourceBuffer,
                               StringBuffer noteBuffer,
@@ -1496,6 +1487,58 @@ public class Person extends EventContainer implements Comparable {
          an.print(buf, sourceBuffer, noteBuffer, this, gedcom);
       }
    }
+
+   // Prints the families attached to this person
+   private void printFamilies(StringBuffer buf, StringBuffer sourceBuffer, StringBuffer bodyText, Gedcom gedcom)
+         throws Uploader.PrintException, Gedcom.PostProcessException
+   {
+      if (!Utils.isEmpty(primaryChildOf))
+      {
+         Family fam = gedcom.getFamilies().get(primaryChildOf);
+         if (fam != null)
+         {
+            fam.printChildOfFamily(buf);
+         } else
+         {
+            logger.info("Primary child of family id \"" + primaryChildOf + "\" is not valid");
+            bodyText.append("Missing primary child of family with GEDCOM ID: " + primaryChildOf);
+         }
+      }
+
+      for (String famID1 : getChildOfFamilies())
+      {
+         if (!famID1.equals(primaryChildOf))
+         {
+            Family fam1 = gedcom.getFamilies().get(famID1);
+            if (fam1 != null)
+            {
+               fam1.printChildOfFamily(buf);
+            } else{
+               logger.info ("When printing person " + getID() +
+                     ", child of family id: \"" + famID1 + "\" is not valid");
+               Utils.prependParagraphBreak(bodyText);
+               bodyText.append("Missing child of family with GEDCOM ID: " + famID1);
+            }
+         }
+      }
+
+      for (String famID : getSpouseOfFamilies())
+      {
+         Family fam = gedcom.getFamilies().get(famID);
+         if (fam != null)
+         {
+            GedcomElementWriter ew = new GedcomElementWriter("spouse_of_family");
+            ew.put("id", fam.getID());
+            ew.write(buf);
+         } else
+         {
+            logger.info("When printing person " + getID() +
+                  ", spouse of family id: \"" + famID + "\" is not valid");
+            Utils.prependParagraphBreak(bodyText);
+            bodyText.append("Missing spouse of family with GEDCOM ID: " + famID);
+         }
+      }
+   };
 
    // Prints an LDS event that is attached to this person,
    // (and belongs in the person's page data element
