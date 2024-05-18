@@ -358,6 +358,7 @@ public class Person extends EventContainer implements Comparable {
       StringBuffer bodyText = new StringBuffer();
       buf.append("<person>\n");
       printNamesGender(buf, sourceBuffer, noteBuffer, gedcom);
+      printFamilies(buf, sourceBuffer, bodyText, gedcom);
       printEvents(gedcom, buf, sourceBuffer, noteBuffer);
       buf.append("</person>");
       return buf.toString();
@@ -677,7 +678,7 @@ public class Person extends EventContainer implements Comparable {
       }
       String data = prepareDataForEdit(gedcom);
       Element root = SharedUtils.parseText(new Builder(), data, true).getRootElement();
-      PersonDQAnalysis personDQAnalysis = new PersonDQAnalysis(root, getID());
+      PersonDQAnalysis personDQAnalysis = new PersonDQAnalysis(root, getID(), true);
       if (personDQAnalysis.isDeadOrExempt() == 1) 
       {
          setLiving(LivingStatus.DEAD);
