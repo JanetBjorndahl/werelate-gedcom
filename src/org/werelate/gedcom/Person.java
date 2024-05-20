@@ -296,11 +296,6 @@ public class Person extends EventContainer implements Comparable {
       if (s != null) s = s.toLowerCase();
       return !Utils.isEmpty(s) && DIED_YOUNG_WORDS.contains(s);
    }
-         
-   private boolean isDeadText(String s) {
-      if (s != null) s = s.toLowerCase();
-      return !Utils.isEmpty(s) && !LIVING_EVENT_WORDS.contains(s) && !"n".equals(s.toLowerCase());
-   }
 
    /**
     * Standardize a death event: Look for indication of an early death without a date and set death date to standard WeRelate phrase accordingly.
@@ -726,7 +721,7 @@ public class Person extends EventContainer implements Comparable {
       }
    }
 
-   // If someone named "Living" isn't marked living, change their name to Unknown
+   // If someone named "Living" isn't marked living, remove their name
    public static void setUnknownName(Gedcom gedcom) {
       for (Person person : gedcom.getPeople().values())
       {
@@ -737,12 +732,10 @@ public class Person extends EventContainer implements Comparable {
                String surname = name.getSurname();
                if (!PlaceUtils.isEmpty(given) && given.equalsIgnoreCase("living")) {
                   name.clearGiven();
-                  name.setGiven("Unknown");
                }
                if (PlaceUtils.isEmpty(given) && !PlaceUtils.isEmpty(surname) && surname.equalsIgnoreCase("living")) {
                   name.clearSurname();
                   name.clearGiven();
-                  name.setGiven("Unknown");
                }
             }
          }
