@@ -6,6 +6,7 @@ import org.werelate.util.MultiMap;
 import org.werelate.util.EventDate;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.werelate.gedcom.Person;
 
 import java.awt.event.WindowFocusListener;
 import java.util.*;
@@ -403,6 +404,26 @@ public class Family extends EventContainer{
       printEvents(gedcom, buf, sourceBuffer, noteBuffer);
       buf.append("</family>");
       return buf.toString();
+   }
+
+   private static final Set<String> LIVING_EVENT_WORDS = Person.LIVING_EVENT_WORDS;
+
+   // Determines if this family has events indicating the GEDCOM generator designated 
+   // one or more family members as living.
+   public boolean hasLivingEvents() {
+      for (Event event : getEvents())
+      {
+         String date = event.getAttribute("DATE");
+         if (!Utils.isEmpty(date))
+         {
+            date = date.trim().toLowerCase();
+            if (LIVING_EVENT_WORDS.contains(date))
+            {
+               return true;
+            }
+         }
+      }
+      return false;
    }
 
    public void findProblems(MultiMap<String, Family> familyNames2Family, Gedcom gedcom)

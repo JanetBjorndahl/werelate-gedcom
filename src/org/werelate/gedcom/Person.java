@@ -279,7 +279,7 @@ public class Person extends EventContainer implements Comparable {
    private static final Set<String> DIED_YOUNG_WORDS =
             new HashSet<String>(Arrays.asList("young","died young","as a child","died as a child","in childhood","died in childhood"));
 
-   private static final Set<String> LIVING_EVENT_WORDS =
+   public static final Set<String> LIVING_EVENT_WORDS =
             new HashSet<String>(Arrays.asList("living","private","alive","details withheld"));
    
    private boolean isDiedInInfancyText(String s) {
@@ -368,8 +368,7 @@ public class Person extends EventContainer implements Comparable {
       return buf.toString();
    }
 
-   // Determines if this person is considered living based on the presence of certain words (living, private, etc.)
-   // or was born within a specified number of years, or has a death event with the indicator N.
+   // Determines if this person has events indicating the GEDCOM generator designated the person as living.
    private boolean hasLivingEvents() {
       for (Event event : getEvents())
       {
@@ -377,7 +376,6 @@ public class Person extends EventContainer implements Comparable {
          if (!Utils.isEmpty(date))
          {
             date = date.trim().toLowerCase();
-
             if (LIVING_EVENT_WORDS.contains(date))
             {
                return true;
@@ -395,60 +393,45 @@ public class Person extends EventContainer implements Comparable {
       return false;
    }
 
-   private boolean isDefinitelyLiving(Gedcom gedcom) throws Gedcom.PostProcessException {
-      boolean rval = false;
-
-      // First let's check to see if the
-      // gedcom generator has designated this person as living
-      if (getEvents().size() == 0)
-      {
-         Name name = getName();
-         if (name != null) {
-            // person is living if their given name is living or their given name is empty and their surname is living, and they don't have old relatives
-            if (((!PlaceUtils.isEmpty(name.getGiven()) && name.getGiven().equalsIgnoreCase("living")) ||
-                 (PlaceUtils.isEmpty(name.getGiven()) && !PlaceUtils.isEmpty(name.getSurname()) && name.getSurname().equalsIgnoreCase("living"))))
-            {
-               return true;
-            }
-         }
-      }
-      else {
-         // If there are events, we want to see if any of the
-         // events mark this person as "Private".
-         // If it does, we will assume the person is living.
-         if (hasLivingEvents()) {
+   /* 
+    * Returns true if there are indications on the page that the GEDCOM generator designated
+    * this person as living.
+    */
+   private boolean isMarkedLiving(Gedcom gedcom) throws Gedcom.PostProcessException {
+      // Given name = living or surname = living where the given name is empty
+      // This is checked only for the person being processed, since "Living" is a valid
+      // name and we only check it when we know that an earliest possible birth year cannot
+      // be determined.
+      Name name = getName();
+      if (name != null) {
+         if (((!PlaceUtils.isEmpty(name.getGiven()) && name.getGiven().equalsIgnoreCase("living")) ||
+               (PlaceUtils.isEmpty(name.getGiven()) && !PlaceUtils.isEmpty(name.getSurname()) && name.getSurname().equalsIgnoreCase("living"))))
+         {
             return true;
          }
       }
+      
+      // Has events where the date contains a word/phrase suggesting information has been withheld
+      // for reasons of privacy.
+      if (hasLivingEvents()) {
+         return true;
+      }
 
-      // let's go through all of the marriage dates
-      // and see if they are private or if they occur since DEAD_IF_MARRIED.
-      // If so, we assume the person is living.
+      // Has marriage events where the date suggests information has been withheld.
       for (String familyId : getSpouseOfFamilies())
       {
          Family family;
          if ((family = gedcom.getFamilies().get(familyId)) != null)
          {
-            for(Event event : family.getEvents())
-            {
-               String date = event.getAttribute("DATE");
-               if (!Utils.isEmpty(date))
-               {
-                  date = date.trim().toLowerCase();
-                  if ((event.getType() == Event.Type.marriage || event.getType() == Event.Type.alt_marriage) &&
-                      (date.equals("private") || date.equals("living") || isDateNewerThan(date, DEAD_IF_MARRIED)))
-                  {
-                     return true;
-                  }
-               }
+            if (family.hasLivingEvents()) {
+               return true;
             }
 
-            // check for recently-born spouse
+            // Has a spouse with events where the date suggests information has been withheld
             for (String spouseId : family.getSpouses()) {
                Person spouse;
                if ((spouse = gedcom.getPeople().get(spouseId)) != null) {
-                  if (spouse != this && // already checked this spouse
-                      spouse.hasLivingEvents()) {
+                  if (spouse != this && spouse.hasLivingEvents()) {
                      return true;
                   }
                }
@@ -458,7 +441,7 @@ public class Person extends EventContainer implements Comparable {
                }
             }
 
-            // check for recently-born child
+            // Has a child with events where the date suggests information has been withheld
             for (Family.Child c : family.getChildren()) {
                Person child;
                if ((child = gedcom.getPeople().get(c.getId())) != null) {
@@ -479,27 +462,17 @@ public class Person extends EventContainer implements Comparable {
          }
       }
 
-      // check parent families for recently-married parents, living parents
+      // Has parents with marriage events where the date suggests information has been withheld.
       for (String familyId : getChildOfFamilies())
       {
          Family family;
          if ((family = gedcom.getFamilies().get(familyId)) != null)
          {
-            for(Event event : family.getEvents())
-            {
-               String date = event.getAttribute("DATE");
-               if (!Utils.isEmpty(date))
-               {
-                  date = date.trim().toLowerCase();
-                  if ((event.getType() == Event.Type.marriage || event.getType() == Event.Type.alt_marriage) &&
-                      (date.equals("private") || date.equals("living") || isDateNewerThan(date, LIVING_IF_PARENTS_MARRIED)))
-                  {
-                     return true;
-                  }
-               }
+            if (family.hasLivingEvents()) {
+               return true;
             }
 
-            // check for recently-born parent
+            // Has a parent with events where the date suggests information has been withheld
             for (String spouseId : family.getSpouses()) {
                Person spouse;
                if ((spouse = gedcom.getPeople().get(spouseId)) != null) {
@@ -513,7 +486,7 @@ public class Person extends EventContainer implements Comparable {
                }
             }
 
-            // check for recently-born siblings
+            // Has a sibling with events where the date suggests information has been withheld
             for (Family.Child c : family.getChildren()) {
                Person child;
                if ((child = gedcom.getPeople().get(c.getId())) != null) {
@@ -556,7 +529,7 @@ public class Person extends EventContainer implements Comparable {
    // This routine does two things:
    //   It finds data quality issues for a person.
    //   It tries to determine whether or not a person is living, based on their own data
-   //   and dates of their close relatives.
+   //   and that of their close relatives.
    private void setLivingFirstPass(Gedcom gedcom)
          throws Uploader.PrintException, Gedcom.PostProcessException, ParsingException, IOException
     {
@@ -619,6 +592,9 @@ public class Person extends EventContainer implements Comparable {
             }
          }
       }
+
+      // If status not already set to dead based on death information, and a latest possible birth
+      // year was calculated, set living status based on latest possible birth year.
       if (getLiving() == LivingStatus.UNKNOWN)
       {
          if (latestBirth != null) 
@@ -632,9 +608,15 @@ public class Person extends EventContainer implements Comparable {
                setLiving(LivingStatus.DEAD);
             }
          }
+         // If status not already set to dead based on death information, and no dates were available
+         // to calculate a latest possible birth year, look for an indication that the GEDCOM generator
+         // designated the person as living.
          else 
          {
-            // check for living events, names
+            if (isMarkedLiving(gedcom))
+            {
+               setLiving(LivingStatus.LIVING);
+            }
          }
       }
    }
