@@ -269,35 +269,6 @@ public class Family extends EventContainer{
       return true;
    }
 
-   /*public boolean hasDeadParent(Gedcom gedcom) throws Uploader.PrintException {
-      if (hasDead(gedcom, getHusbands(), "husband"))
-      {
-         return true;
-      } else
-      {
-         return hasDead(gedcom, getWives(), "wife");
-      }
-   } */
-
-   public boolean hasOldFamilyMember(Gedcom gedcom, int numYearsSpouse, int numYearsChild) {
-      Collection<String> members = new ArrayList<String>();
-      members.addAll(getHusbands());
-      members.addAll(getWives());
-      for (String personID : members) {
-         Person person = gedcom.getPeople().get(personID);
-         if (person != null && person.hasOldBirth(numYearsSpouse)) {
-            return true;
-         }
-      }
-      for (Child child : getChildren()) {
-         Person person = gedcom.getPeople().get(child.getId());
-         if (person != null && person.hasOldBirth(numYearsChild)) {
-            return true;
-         }
-      }
-      return false;
-   }
-
    // Returns true if any of the people indicated by the list of GEDCOM IDs in personList
    // have LivingStatus == Living.
    // Otherwise this returns false
@@ -417,6 +388,21 @@ public class Family extends EventContainer{
          }
       }
       return new DateStd(marriageDate, stdMarriageDate);
+   }
+
+   // Reformats sufficient (minimal) gedcom data into XML format for editing using FamilyDQAnalysis.
+   public String prepareDataForAnalysis(Gedcom gedcom) 
+         throws Uploader.PrintException, Gedcom.PostProcessException
+   {
+      StringBuffer buf = new StringBuffer();
+      StringBuffer sourceBuffer = new StringBuffer();
+      StringBuffer noteBuffer = new StringBuffer();
+      StringBuffer bodyText = new StringBuffer();
+      buf.append("<family>\n");
+      printFamilyMembers(buf, bodyText, gedcom);
+      printEvents(gedcom, buf, sourceBuffer, noteBuffer);
+      buf.append("</family>");
+      return buf.toString();
    }
 
    public void findProblems(MultiMap<String, Family> familyNames2Family, Gedcom gedcom)
@@ -594,92 +580,10 @@ public class Family extends EventContainer{
       try
       {         
          StringBuffer buf = new StringBuffer();
-         buf.append("<family>\n");
-         // The reason we need this string is to make
-         // sure that we print out the preferred husband
-         // and wife first.
-         String subPeople = "";
-         String subPersonStr;
          StringBuffer bodyText = new StringBuffer();
-         for (String husband : getHusbands())
-         {
-            subPersonStr = printSubPerson("husband", husband, gedcom, getID(), true, bodyText);
-            if (!Utils.isEmpty(preferredHusband) &&
-                  husband.equals(preferredHusband))
-            {
-               buf.append(subPersonStr);
-            } else
-            {
-               subPeople += subPersonStr;
-            }
-         }
-         buf.append(subPeople);
-         subPeople = "";
-         for (String wife : getWives())
-         {
-            subPersonStr = printSubPerson("wife", wife, gedcom, getID(), true, bodyText);
-            if (!Utils.isEmpty(preferredWife) &&
-                  wife.equals(preferredWife))
-            {
-               buf.append(subPersonStr);
-            } else
-            {
-               subPeople += subPersonStr;
-            }
-         }
-         buf.append(subPeople);
-         subPeople = "";
+         buf.append("<family>\n");
+         printFamilyMembers(buf, bodyText, gedcom);
 
-         // NOTE!! VERY IMPORTANT --
-         // Children must be kept all together when
-         // they are printed out!
-         Set<Person> children = new TreeSet<Person>();
-         for (Child child : getChildren())
-         {
-            if (child.getId() != null)
-            {
-               Person person = gedcom.getPeople().get(child.getId());
-               if (person != null)
-               {
-                  person.setAdopted(child.isAdopted());
-                  person.setStatus(child.getStatus());
-                  children.add(person);
-               } else
-               {
-                  logger.info(gedcom.logStr("Invalid ID number for child: " + child.getId() + " in family: " + getID()));
-               }
-            }
-         }
-
-         for (Person child : children)
-         {
-            subPersonStr = printSubPerson("child", child.getID(), gedcom, getID(), false, bodyText);
-            buf.append(subPersonStr);
-         }
-         buf.append(subPeople);
-
-         for (Person child : children)
-         {
-            if (child.isAdopted())
-            {
-               addNote(child.getWikiTitle(gedcom) +
-                     " was adopted.");
-            }
-
-            // legacy 7.4 free version seems to set this even when the user hasn't explicitly set it
-//            if (preferredChildren.contains(child.getID()))
-//            {
-//               addNote(child.getWikiTitle(gedcom)
-//                     + " is preferred.");
-//            }
-
-            if (!Utils.isEmpty(child.getStatus()))
-            {
-               addNote(child.getWikiTitle(gedcom)
-                     + "'s status: "
-                     + child.getStatus());
-            }
-         }
          printNotes(bodyText, getCitations(), gedcom);
          if (!Utils.isEmpty(bodyText.toString()))
          {
@@ -720,6 +624,88 @@ public class Family extends EventContainer{
       out.println("</content>");
       out.println("</page>");
 
+   }
+
+   private void printFamilyMembers(StringBuffer buf, StringBuffer bodyText, Gedcom gedcom)
+         throws Uploader.PrintException, Gedcom.PostProcessException
+   {
+      // The reason we need this string is to make
+      // sure that we print out the preferred husband
+      // and wife first.
+      String subPeople = "";
+      String subPersonStr;
+      for (String husband : getHusbands())
+      {
+         subPersonStr = printSubPerson("husband", husband, gedcom, getID(), true, bodyText);
+         if (!Utils.isEmpty(preferredHusband) &&
+               husband.equals(preferredHusband))
+         {
+            buf.append(subPersonStr);
+         } else
+         {
+            subPeople += subPersonStr;
+         }
+      }
+      buf.append(subPeople);
+      subPeople = "";
+      for (String wife : getWives())
+      {
+         subPersonStr = printSubPerson("wife", wife, gedcom, getID(), true, bodyText);
+         if (!Utils.isEmpty(preferredWife) &&
+               wife.equals(preferredWife))
+         {
+            buf.append(subPersonStr);
+         } else
+         {
+            subPeople += subPersonStr;
+         }
+      }
+      buf.append(subPeople);
+      subPeople = "";
+
+      // NOTE!! VERY IMPORTANT --
+      // Children must be kept all together when
+      // they are printed out!
+      Set<Person> children = new TreeSet<Person>();
+      for (Child child : getChildren())
+      {
+         if (child.getId() != null)
+         {
+            Person person = gedcom.getPeople().get(child.getId());
+            if (person != null)
+            {
+               person.setAdopted(child.isAdopted());
+               person.setStatus(child.getStatus());
+               children.add(person);
+            } else
+            {
+               logger.info(gedcom.logStr("Invalid ID number for child: " + child.getId() + " in family: " + getID()));
+            }
+         }
+      }
+
+      for (Person child : children)
+      {
+         subPersonStr = printSubPerson("child", child.getID(), gedcom, getID(), false, bodyText);
+         buf.append(subPersonStr);
+      }
+      buf.append(subPeople);
+
+      for (Person child : children)
+      {
+         if (child.isAdopted())
+         {
+            addNote(child.getWikiTitle(gedcom) +
+                  " was adopted.");
+         }
+
+         if (!Utils.isEmpty(child.getStatus()))
+         {
+            addNote(child.getWikiTitle(gedcom)
+                  + "'s status: "
+                  + child.getStatus());
+         }
+      }
    }
 
    private boolean printAttribute(Person person, Gedcom gedcom, GedcomElementWriter ew, Event.Type eventType) throws Uploader.PrintException {
@@ -775,13 +761,14 @@ public class Family extends EventContainer{
             if (personFamilyID != null)
             {
                Family fam = gedcom.getFamilies().get(personFamilyID);
-               if (fam != null && fam.shouldPrint(gedcom))
-               {
-                  ew.put("child_of_family", personFamilyID);
-               } else
+               if (fam == null) 
                {
                   logger.info("Invalid family ID exists inside of the person: "
-                        + person.getID() + " Family ID: " + personFamilyID);
+                  + person.getID() + " Family ID: " + personFamilyID);
+               }
+               else if (fam.shouldPrint(gedcom)) 
+               {
+                  ew.put("child_of_family", personFamilyID);
                }
             }
          }
