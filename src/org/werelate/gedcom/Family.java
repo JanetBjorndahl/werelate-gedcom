@@ -1,6 +1,7 @@
 package org.werelate.gedcom;
 
 import org.werelate.util.PlaceUtils;
+import org.werelate.util.SharedUtils;
 import org.werelate.util.Utils;
 import org.werelate.util.MultiMap;
 import org.werelate.util.EventDate;
@@ -472,7 +473,7 @@ public class Family extends EventContainer{
             String husbandSurname = husband.getName().getSurname();
             String husbandGivenname = husband.getName().getFirstGiven();
             String husbandGivenRegex = null;
-            if (husbandGivenname != null && husbandGivenname.length() > 1) {
+            if (!SharedUtils.isEmpty(husbandGivenname)) {
                husbandGivenRegex = ".*\\b" + husbandGivenname.toLowerCase() + "\\b.*";
             }
             for (String wifeId : getWives())

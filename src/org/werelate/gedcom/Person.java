@@ -260,25 +260,16 @@ public class Person extends EventContainer implements Comparable {
    // issues: [][0] = category, [][1] = description, [][2] = namesspace, [][3] = pageid, [][4] = whether the wiki requires immediate fix
    private String[][] issues = new String[1000][5];
 
-   private static final int DEAD_IF_OLDER_THAN = 110;
-   private static final int DEAD_IF_MARRIED = 90;
-   private static final int LIVING_IF_PARENTS_YOUNGER_THAN = 130;
-   private static final int LIVING_IF_PARENTS_MARRIED = 110;
-   private static final int LIVING_IF_CHILD_YOUNGER_THAN = 90;
-   private static final int LIVING_IF_SIBLING_YOUNGER_THAN = 110;
+   private static final int USUAL_LONGEST_LIFE = FamilyDQAnalysis.USUAL_LONGEST_LIFE;
 
    private static final String DIED_IN_INFANCY_DATE = "(in infancy)";
    private static final String DIED_YOUNG_DATE = "(young)";
-
    private static final Set<String> DIED_IN_INFANCY_WORDS =
             new HashSet<String>(Arrays.asList("in infancy","died in infancy","infancy","infant","died as an infant","as an infant"));
-
    private static final Set<String> STILLBORN_WORDS =
             new HashSet<String>(Arrays.asList("stillborn","stillbirth"));
-
    private static final Set<String> DIED_YOUNG_WORDS =
             new HashSet<String>(Arrays.asList("young","died young","as a child","died as a child","in childhood","died in childhood"));
-
    public static final Set<String> LIVING_EVENT_WORDS =
             new HashSet<String>(Arrays.asList("living","private","alive","details withheld"));
    
@@ -566,7 +557,7 @@ public class Person extends EventContainer implements Comparable {
       {
          for (String familyID : getSpouseOfFamilies()) 
          {
-            if (latestBirth == null || latestBirth > (CURR_YEAR - DEAD_IF_OLDER_THAN)) 
+            if (latestBirth == null || latestBirth > (CURR_YEAR - USUAL_LONGEST_LIFE)) 
             {
                Family family = gedcom.getFamilies().get(familyID);
                if (family != null) {
@@ -594,7 +585,7 @@ public class Person extends EventContainer implements Comparable {
       {
          if (latestBirth != null) 
          {
-            if (latestBirth > (CURR_YEAR - DEAD_IF_OLDER_THAN))            
+            if (latestBirth > (CURR_YEAR - USUAL_LONGEST_LIFE))            
             {
                setLiving(LivingStatus.LIVING);
             }
@@ -676,7 +667,7 @@ public class Person extends EventContainer implements Comparable {
     */
    public static void setLiving (Gedcom gedcom) throws Gedcom.PostProcessException
    {
-      // try to mark people living or dead based upon dates of themselves or their near relatives
+      // try to mark people living or dead based on dates of themselves or their near relatives
       for (Person person : gedcom.getPeople().values())
       {
          try
@@ -693,6 +684,8 @@ public class Person extends EventContainer implements Comparable {
          }
       }
 
+      // Mark people living if their status is unknown and a near relative has been marked living.
+      // Iterate as long as people are being marked living to ensure all generations are marked.
       boolean foundLiving = true;
       Set<String> livingIds = new HashSet<String>();
       while (foundLiving) {
@@ -935,7 +928,7 @@ public class Person extends EventContainer implements Comparable {
    }
 
    private static boolean isUnknownName(String name) {
-      if (name == null || name.length() == 0) return true;
+      if (SharedUtils.isEmpty(name)) return true;
       name = name.toLowerCase();
       return (name.equals("unknown")
            || name.equals("unk")
@@ -992,6 +985,7 @@ public class Person extends EventContainer implements Comparable {
       }
       return surname;
    }
+   
    // Simple utility function used by getWikiTitle which concatenates
    // the two parts of the name together
    private static String concatSurnameToGiven(String given, String surname) {
