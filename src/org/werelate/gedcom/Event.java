@@ -524,7 +524,8 @@ public class Event extends ReferenceContainer implements Comparable {
          return getCitations().size() - other.getCitations().size();
       }
 
-      gedcom.infoLine("Two events -- \"" + toString() + "\" and \"" + other.toString() + "\" are identical");
+      // The following line of code reports an event as being the same as itself (although it doesn't report all events, for an unknown reason).
+//      gedcom.infoLine("Two events -- \"" + toString() + "\" and \"" + other.toString() + "\" are identical");
       return 0;
    }
 
