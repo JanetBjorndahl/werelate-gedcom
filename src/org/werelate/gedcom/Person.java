@@ -1309,6 +1309,13 @@ public class Person extends EventContainer implements Comparable {
       {
          addProblem("0Surname has only one letter");
       }
+
+      // If circular relationship found, report it. (Other issues may duplicate issues already handled in above code.)
+      for (int i=0; issues[i][0] != null ; i++) {
+         if (issues[i][1].equals("Child and spouse of the same family")) {
+            addProblem("2" + issues[i][1]);
+         }
+      }
    }
 
    /**
