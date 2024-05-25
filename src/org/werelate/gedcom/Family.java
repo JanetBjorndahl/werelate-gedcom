@@ -605,7 +605,6 @@ public class Family extends EventContainer{
          StringBuffer bodyText = new StringBuffer();
          buf.append("<family>\n");
          printFamilyMembers(buf, bodyText, gedcom);
-
          printNotes(bodyText, getCitations(), gedcom);
          if (!Utils.isEmpty(bodyText.toString()))
          {
