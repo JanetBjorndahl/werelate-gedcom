@@ -393,16 +393,16 @@ public class Family extends EventContainer{
    }
 
    // Reformats sufficient (minimal) gedcom data into XML format for editing using FamilyDQAnalysis.
+   // Note that it is important that citations NOT be processed at this time, because if they
+   // are, they won't get processed when writing the XML to file later on.
    public String prepareDataForAnalysis(Gedcom gedcom) 
          throws Uploader.PrintException, Gedcom.PostProcessException
    {
       StringBuffer buf = new StringBuffer();
-      StringBuffer sourceBuffer = new StringBuffer();
-      StringBuffer noteBuffer = new StringBuffer();
       StringBuffer bodyText = new StringBuffer();
       buf.append("<family>\n");
       printFamilyMembers(buf, bodyText, gedcom);
-      printEvents(gedcom, buf, sourceBuffer, noteBuffer);
+      prepareEvents(gedcom, buf);
       buf.append("</family>");
       return buf.toString();
    }

@@ -339,17 +339,18 @@ public class Person extends EventContainer implements Comparable {
    }
 
    // Reformats sufficient (minimal) gedcom data into XML format for editing using PersonDQAnalysis.
+   // Note that it is important that citations NOT be processed at this time, because if they
+   // are, they won't get processed when writing the XML to file later on.
    public String prepareDataForAnalysis(Gedcom gedcom) 
          throws Uploader.PrintException, Gedcom.PostProcessException
    {
       StringBuffer buf = new StringBuffer();
-      StringBuffer sourceBuffer = new StringBuffer();
-      StringBuffer noteBuffer = new StringBuffer();
       StringBuffer bodyText = new StringBuffer();
       buf.append("<person>\n");
-      printNamesGender(buf, sourceBuffer, noteBuffer, gedcom);
-      printFamilies(buf, sourceBuffer, bodyText, gedcom);
-      printEvents(gedcom, buf, sourceBuffer, noteBuffer);
+      prepareNames(buf, gedcom);
+      printGender(buf, gedcom);
+      printFamilies(buf, bodyText, gedcom);
+      prepareEvents(gedcom, buf);
       buf.append("</person>");
       return buf.toString();
    }
@@ -1337,8 +1338,9 @@ public class Person extends EventContainer implements Comparable {
          StringBuffer noteBuffer = new StringBuffer();
          StringBuffer bodyText = new StringBuffer();
          buf.append("<person>\n");
-         printNamesGender(buf, sourceBuffer, noteBuffer, gedcom);
-         printFamilies(buf, sourceBuffer, bodyText, gedcom);
+         printNames(buf, sourceBuffer, noteBuffer, gedcom);
+         printGender(buf, gedcom);
+         printFamilies(buf, bodyText, gedcom);
          if (!Utils.isEmpty(pedi) && !Utils.isEmpty(pediID))
          {
             Family fam = gedcom.getFamilies().get(pediID);
@@ -1389,8 +1391,8 @@ public class Person extends EventContainer implements Comparable {
       out.println("</page>");
    }
 
-   // Prints this person's names and gender.
-   private void printNamesGender(StringBuffer buf, StringBuffer sourceBuffer, StringBuffer noteBuffer, Gedcom gedcom)
+   // Prints this person's names, with references
+   private void printNames(StringBuffer buf, StringBuffer sourceBuffer, StringBuffer noteBuffer, Gedcom gedcom)
          throws Uploader.PrintException, Gedcom.PostProcessException
    {
       if (getName() != null)
@@ -1400,18 +1402,11 @@ public class Person extends EventContainer implements Comparable {
       {
          (new Name()).print(buf, sourceBuffer, noteBuffer, this, gedcom);
       }
-      // Now let's print the alternate names:
-      printAltNames(buf, sourceBuffer, noteBuffer, gedcom);
-      if (getGender() != Gender.unknown)
-      {
-         buf.append(Uploader.printTag("gender", getGenderString()));
-      } else
-      {
-         buf.append(Uploader.printTag("gender", "?"));
-      }
+      // Now let's print the alternate names
+      printAltNames(buf, sourceBuffer, noteBuffer, gedcom);  
    }
 
-   // Prints the alternate names attached to this person
+   // Prints the alternate names attached to this person, with references
    private void printAltNames(StringBuffer buf, StringBuffer sourceBuffer,
                               StringBuffer noteBuffer,
                               Gedcom gedcom)
@@ -1423,8 +1418,43 @@ public class Person extends EventContainer implements Comparable {
       }
    }
 
+   // Prepares this person's names without references
+   private void prepareNames(StringBuffer buf, Gedcom gedcom)
+   {
+      if (getName() != null)
+      {
+         getName().prepareTag(buf, gedcom);
+      } else
+      {
+         (new Name()).prepareTag(buf, gedcom);
+      }
+      // Now let's prepare the alternate names
+      prepareAltNames(buf, gedcom);  
+   }
+
+   // Prepares the alternate names attached to this person, without references
+   private void prepareAltNames(StringBuffer buf, Gedcom gedcom)
+   {
+      for (AlternateName an : getAltNames())
+      {
+         an.prepareTag(buf, gedcom);
+      }
+   }
+
+   // Prints this person's gender.
+   private void printGender(StringBuffer buf, Gedcom gedcom)
+   {
+      if (getGender() != Gender.unknown)
+      {
+         buf.append(Uploader.printTag("gender", getGenderString()));
+      } else
+      {
+         buf.append(Uploader.printTag("gender", "?"));
+      }
+   }
+
    // Prints the families attached to this person
-   private void printFamilies(StringBuffer buf, StringBuffer sourceBuffer, StringBuffer bodyText, Gedcom gedcom)
+   private void printFamilies(StringBuffer buf, StringBuffer bodyText, Gedcom gedcom)
          throws Uploader.PrintException, Gedcom.PostProcessException
    {
       if (!Utils.isEmpty(primaryChildOf))
@@ -1473,7 +1503,7 @@ public class Person extends EventContainer implements Comparable {
             bodyText.append("Missing spouse of family with GEDCOM ID: " + famID);
          }
       }
-   };
+   }
 
    // Prints an LDS event that is attached to this person,
    // (and belongs in the person's page data element
