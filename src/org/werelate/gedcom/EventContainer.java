@@ -211,11 +211,8 @@ public abstract class EventContainer extends TopObject {
     * (notes and citations)
     * @param gedcom
     * @param buf to print everything but the image citations
-    * @throws Uploader.PrintException
-    * @throws Gedcom.PostProcessException
     */
     protected void prepareEvents(Gedcom gedcom, StringBuffer buf)
-//throws Uploader.PrintException, Gedcom.PostProcessException
    {
       for (Event event : getEvents())
       {

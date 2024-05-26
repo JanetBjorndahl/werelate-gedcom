@@ -286,7 +286,6 @@ public class Event extends ReferenceContainer implements Comparable {
     * @return the String version of the XML tag for the event
     */
     public String prepareTag(Gedcom gedcom) 
-//            throws Uploader.PrintException
    {
       String outText = "";
       if (!Utils.isEmpty(toString()) &&
@@ -307,8 +306,7 @@ public class Event extends ReferenceContainer implements Comparable {
     * @param ew the GedcomElementWriter to use for the tag
     * @param gedcom
     */
-    public void formatTag(GedcomElementWriter ew, Gedcom gedcom) 
-//            throws Uploader.PrintException
+   public void formatTag(GedcomElementWriter ew, Gedcom gedcom) 
    {
       String typeAtt = getAttribute("TYPE");
       String normalizedTypeAtt = null;
