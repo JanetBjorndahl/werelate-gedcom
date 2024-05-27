@@ -517,6 +517,7 @@ public class Person extends EventContainer implements Comparable {
    //   It finds data quality issues for a person.
    //   It tries to determine whether or not a person is living, based on their own data
    //   and that of their close relatives.
+   // Note that similar logic exists in DQHandler.php.
    private void setLivingFirstPass(Gedcom gedcom)
          throws Uploader.PrintException, Gedcom.PostProcessException, ParsingException, IOException
     {
