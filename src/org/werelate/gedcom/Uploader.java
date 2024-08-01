@@ -645,12 +645,11 @@ public class Uploader {
                   } else
                   {
                      numPlaces += gedcom.getNumPlacesQueried();
-                     logger.info("Change living name to unknown");
                      logger.info("Setting isLiving");
                      Person.setLiving(gedcom);
+                     logger.info("Done setting isLiving");
                      // don't do this anymore
                      //gedcom.propagatePrimaryPerson();
-                     logger.info("Done setting isLiving");
                      logger.info("Changing names from living to unknown");
                      Person.setUnknownName(gedcom);
                      logger.info("Done changing names");

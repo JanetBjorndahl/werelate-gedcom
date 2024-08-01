@@ -258,13 +258,13 @@ public class Event extends ReferenceContainer implements Comparable {
    }
 
    /**
-    * Prints the Event as an XML tag
+    * Prints the Event as an XML tag, with references
     * @param gedcom
-    * @return the String version of the XML tag which was printed
-    * of the event.
+    * @return the String version of the XML tag for the event
     * @throws Uploader.PrintException
     */
-   public String printTag(Gedcom gedcom) throws Uploader.PrintException{
+   public String printTag(Gedcom gedcom) throws Uploader.PrintException 
+   {
       String outText = "";
       if (!Utils.isEmpty(toString()) &&
             (this.atts.size() > 0
@@ -273,77 +273,108 @@ public class Event extends ReferenceContainer implements Comparable {
             || !super.isEmpty()))
       {
          GedcomElementWriter ew = new GedcomElementWriter("event_fact");
-         String typeAtt = getAttribute("TYPE");
-         String normalizedTypeAtt = null;
-         if (typeAtt != null)
-         {            
-            normalizedTypeAtt = EVEN_TYPES_MAP.get(typeAtt.trim().toLowerCase());
-         }
-         if (normalizedTypeAtt != null)
-         {
-            ew.put("type", normalizedTypeAtt);
-         } else
-         {
-            ew.put("type", toString());
-         }
-         if (getAttribute("DATE") != null)                                          // date formatting for the XML added Aug 2021 by Janet Bjorndahl
-         {
-            EventDate eventDate = new EventDate(getAttribute("DATE"), normalizedTypeAtt != null ? normalizedTypeAtt : toString());              
-            ew.put("date", eventDate.formatDate());
-         } else 
-         {
-            ew.put("date", null);
-         }                                     
-
-         /*if (this.getType() == Event.Type.ReferenceNumber && Gedcom.isID(getContent().trim()))
-         {
-            // Let's see if we can retrieve the note with this ID number.
-            Note note = gedcom.getNotes().get(getContent().trim());
-            if (note!=null)
-            {
-               this.content = note.getNote();
-            }
-         }*/
-         appendToDescription("CAUS", gedcom);
-         appendToDescription("STAT", gedcom);
-         appendToDescription("STATDATE", gedcom);
-         appendToDescription("AGE", gedcom);
-         appendDescription(getContent());
-         if (normalizedTypeAtt == null
-               && !Utils.isEmpty(typeAtt)
-               && (Utils.isEmpty(getDescription())
-               ||  !getDescription().contains(typeAtt)))
-         {
-            appendDescription(typeAtt);
-         }
-         appendNewLineDescription(getAttribute("ADDR"));
-         // This moves content of the place field
-         // to the description field if it really belongs there
-         String place = getPlace(gedcom);
-         if (  this.getType() == Event.Type.Other &&
-               Utils.isEmpty(getDescription()) &&
-               place != null &&
-               !place.contains(",") &&
-               !gedcom.getStandardizedPlaceSet().contains(place)
-               )
-         {
-            appendDescription(place);
-         } else if ( this.getType() == Event.Type.SocSecNo &&
-               Utils.isEmpty(getDescription()) &&
-               place != null &&
-               place.trim().matches("\\d\\d\\d-?\\d\\d-?\\d\\d\\d\\d"))
-         {
-            appendDescription(place);
-         }
-         else
-         {
-            ew.put("place", place);
-         }
-         ew.put("desc", getDescription());
+         formatTag(ew, gedcom);
          printReferences(ew);
          outText = ew.write();
       }
       return outText;
+   }
+
+   /**
+    * Prepares the Event as an XML tag, without references
+    * @param gedcom
+    * @return the String version of the XML tag for the event
+    */
+    public String prepareTag(Gedcom gedcom) 
+   {
+      String outText = "";
+      if (!Utils.isEmpty(toString()) &&
+            (this.atts.size() > 0
+            || !Utils.isEmpty(getContent())
+            || !Utils.isEmpty(getDescription())
+            || !super.isEmpty()))
+      {
+         GedcomElementWriter ew = new GedcomElementWriter("event_fact");
+         formatTag(ew, gedcom);
+         outText = ew.write();
+      }
+      return outText;
+   }
+
+   /**
+    * Formats the Event as an XML tag
+    * @param ew the GedcomElementWriter to use for the tag
+    * @param gedcom
+    */
+   public void formatTag(GedcomElementWriter ew, Gedcom gedcom) 
+   {
+      String typeAtt = getAttribute("TYPE");
+      String normalizedTypeAtt = null;
+      if (typeAtt != null)
+      {            
+         normalizedTypeAtt = EVEN_TYPES_MAP.get(typeAtt.trim().toLowerCase());
+      }
+      if (normalizedTypeAtt != null)
+      {
+         ew.put("type", normalizedTypeAtt);
+      } else
+      {
+         ew.put("type", toString());
+      }
+      if (getAttribute("DATE") != null)                                          // date formatting for the XML added Aug 2021 by Janet Bjorndahl
+      {
+         EventDate eventDate = new EventDate(getAttribute("DATE"), normalizedTypeAtt != null ? normalizedTypeAtt : toString());              
+         ew.put("date", eventDate.formatDate());
+      } else 
+      {
+         ew.put("date", null);
+      }                                     
+
+      /*if (this.getType() == Event.Type.ReferenceNumber && Gedcom.isID(getContent().trim()))
+      {
+         // Let's see if we can retrieve the note with this ID number.
+         Note note = gedcom.getNotes().get(getContent().trim());
+         if (note!=null)
+         {
+            this.content = note.getNote();
+         }
+      }*/
+      appendToDescription("CAUS", gedcom);
+      appendToDescription("STAT", gedcom);
+      appendToDescription("STATDATE", gedcom);
+      appendToDescription("AGE", gedcom);
+      appendDescription(getContent());
+      if (normalizedTypeAtt == null
+            && !Utils.isEmpty(typeAtt)
+            && (Utils.isEmpty(getDescription())
+            ||  !getDescription().contains(typeAtt)))
+      {
+         appendDescription(typeAtt);
+      }
+      appendNewLineDescription(getAttribute("ADDR"));
+      // This moves content of the place field
+      // to the description field if it really belongs there
+      String place = getPlace(gedcom);
+      if (  this.getType() == Event.Type.Other &&
+            Utils.isEmpty(getDescription()) &&
+            place != null &&
+            !place.contains(",") &&
+            !gedcom.getStandardizedPlaceSet().contains(place)
+            )
+      {
+         appendDescription(place);
+      } else if ( this.getType() == Event.Type.SocSecNo &&
+            Utils.isEmpty(getDescription()) &&
+            place != null &&
+            place.trim().matches("\\d\\d\\d-?\\d\\d-?\\d\\d\\d\\d"))
+      {
+         appendDescription(place);
+      }
+      else
+      {
+         ew.put("place", place);
+      }
+      ew.put("desc", getDescription());
    }
 
    private void appendToDescription(String attToAppend, Gedcom gedcom) {
@@ -524,7 +555,8 @@ public class Event extends ReferenceContainer implements Comparable {
          return getCitations().size() - other.getCitations().size();
       }
 
-      gedcom.infoLine("Two events -- \"" + toString() + "\" and \"" + other.toString() + "\" are identical");
+      // The following line of code reports an event as being the same as itself (although it doesn't report all events, for an unknown reason).
+//      gedcom.infoLine("Two events -- \"" + toString() + "\" and \"" + other.toString() + "\" are identical");
       return 0;
    }
 

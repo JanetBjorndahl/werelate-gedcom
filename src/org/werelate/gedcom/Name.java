@@ -753,13 +753,38 @@ public class Name extends ReferenceContainer {
       {
          super.printCitsNotesImages(sourceBuffer, noteBuffer, ec, gedcom);
          GedcomElementWriter ew = new GedcomElementWriter(getTagName());
-         ew.put("type", getType());
-         ew.put("given", getGiven());
-         ew.put("surname", getSurname());
-         ew.put("title_prefix", getPrefix());
-         ew.put("title_suffix", getSuffix());
+         formatTag(ew, gedcom);
          super.printReferences(ew);
          ew.write(buf);
       }
+   }
+
+   /**
+    * Prepare the XML tag with the name only, without references
+    * @param buf to print out to
+    * @param gedcom the gedcom this name comes from    
+    */
+   public void prepareTag(StringBuffer buf, Gedcom gedcom)
+   {
+      if (!Utils.isEmpty(toString()))
+      {
+         GedcomElementWriter ew = new GedcomElementWriter(getTagName());
+         formatTag(ew, gedcom);
+         ew.write(buf);
+      }
+   }
+
+   /**
+    * Format the name to be placed in a tag
+    * @param ew elementwriter to put the formated name in
+    * @param gedcom the gedcom this name comes from
+    */
+   private void formatTag(GedcomElementWriter ew, Gedcom gedcom)
+   {
+      ew.put("type", getType());
+      ew.put("given", getGiven());
+      ew.put("surname", getSurname());
+      ew.put("title_prefix", getPrefix());
+      ew.put("title_suffix", getSuffix());
    }
 }

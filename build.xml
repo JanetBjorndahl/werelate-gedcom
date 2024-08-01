@@ -21,6 +21,7 @@
     <pathelement location="${basedir}/lib/mail.jar"/>
     <pathelement location="${basedir}/lib/mysql-connector-j-8.0.33.jar"/>
     <pathelement location="${basedir}/lib/xom-1.1b5.jar"/>
+    <pathelement location="${basedir}/lib/shared.jar"/>    <!-- added Dec 2022 by Janet Bjorndahl -->
   </path>
 
   <!-- Paths -->

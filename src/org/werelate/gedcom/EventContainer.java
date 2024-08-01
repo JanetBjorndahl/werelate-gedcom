@@ -206,6 +206,22 @@ public abstract class EventContainer extends TopObject {
       }
    }
 
+   /**
+    * Prepares XML tags for all of the events in this EventContainer, without references
+    * (notes and citations)
+    * @param gedcom
+    * @param buf to print everything but the image citations
+    */
+    protected void prepareEvents(Gedcom gedcom, StringBuffer buf)
+   {
+      for (Event event : getEvents())
+      {
+         if (!Utils.isEmpty(event.toString()) && !event.getType().equals(Event.Type.ReferenceNumber))
+         {
+            buf.append(event.prepareTag(gedcom));
+         }
+      }
+   }
 
    // List of all citations attached to this EventContainer object
    private ArrayList<Citation> citations = new ArrayList<Citation>();
