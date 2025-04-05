@@ -363,13 +363,13 @@ public class Event extends ReferenceContainer implements Comparable {
             )
       {
          appendDescription(place);
-      } else if ( this.getType() == Event.Type.SocSecNo &&
+      } /* else if ( this.getType() == Event.Type.SocSecNo &&                no longer needed, since Soc Sec No not being imported, changed Apr 2025 by Janet Bjorndahl
             Utils.isEmpty(getDescription()) &&
             place != null &&
             place.trim().matches("\\d\\d\\d-?\\d\\d-?\\d\\d\\d\\d"))
       {
          appendDescription(place);
-      }
+      }  */
       else
       {
          ew.put("place", place);
@@ -796,8 +796,6 @@ public class Event extends ReferenceContainer implements Comparable {
             return "Residence";
          case Retirement:
             return "Retirement";
-         case SocSecNo:
-            return "Soc Sec No";
          case Stillborn:
             return "Stillborn";
          case Will:
@@ -832,6 +830,8 @@ public class Event extends ReferenceContainer implements Comparable {
          case lds_child_sealing:
          case lds_spouse_sealing:
          case lds_endowment:
+         case SocSecNo:              // no longer imported, changed Apr 2025 by Janet Bjorndahl (if added again, reinstate relevant code in formatTag)
+//            return "Soc Sec No";
          case unknown:
          default:
             return null;
