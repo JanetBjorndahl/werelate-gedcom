@@ -7,6 +7,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.*;
+import java.util.regex.*;
 import java.io.PrintWriter;
 import java.io.InputStream;
 
@@ -352,8 +353,8 @@ public class Event extends ReferenceContainer implements Comparable {
          appendDescription(typeAtt);
       }
       appendNewLineDescription(getAttribute("ADDR"));
-      // This moves content of the place field
-      // to the description field if it really belongs there
+
+      // This moves content of the place field to the description field if it really belongs there
       String place = getPlace(gedcom);
       if (  this.getType() == Event.Type.Other &&
             Utils.isEmpty(getDescription()) &&
@@ -363,7 +364,14 @@ public class Event extends ReferenceContainer implements Comparable {
             )
       {
          appendDescription(place);
-      } /* else if ( this.getType() == Event.Type.SocSecNo &&                no longer needed, since Soc Sec No not being imported, changed Apr 2025 by Janet Bjorndahl
+      }
+      // Place is not valid for AFN, but it might contain the AFN value.   Added Apr 2025 by Janet Bjorndahl
+      else if ( this.getType() == Event.Type.AncestralFileNumber && 
+            place != null )
+      {
+         appendDescription(place);
+      }
+      /* else if ( this.getType() == Event.Type.SocSecNo &&                no longer needed, since Soc Sec No not being imported, changed Apr 2025 by Janet Bjorndahl
             Utils.isEmpty(getDescription()) &&
             place != null &&
             place.trim().matches("\\d\\d\\d-?\\d\\d-?\\d\\d\\d\\d"))
@@ -374,7 +382,25 @@ public class Event extends ReferenceContainer implements Comparable {
       {
          ew.put("place", place);
       }
+
+      // Add template to AFN value(s) because imported as Reference Number    Added Apr 2025 by Janet Bjorndahl
+      if ( this.getType() == Event.Type.AncestralFileNumber ) {
+         description = formatAfn(getDescription());
+      }
+
       ew.put("desc", getDescription());
+   }
+
+   // This adds the AFN template to strings more-or-less in the format of an AFN and ignores any other text.
+   private String formatAfn(String s) {
+      Pattern afn = Pattern.compile("[A-Za-z0-9]+-[A-Za-z0-9]+");
+      Matcher matcher = afn.matcher(s);
+      String result = "";
+
+      while ( matcher.find() ) {
+         result = Uploader.append(result, "{{AFN|" + matcher.group() + "}}", ", ");
+      }
+      return result;
    }
 
    private void appendToDescription(String attToAppend, Gedcom gedcom) {
@@ -717,7 +743,7 @@ public class Event extends ReferenceContainer implements Comparable {
          case Adoption:
             return "Adoption";
          case AncestralFileNumber:
-            return "Ancestral File Number";
+            return "Reference Number";             // changed Apr 2025 by Janet Bjorndahl
          case Baptism:
             return "Baptism";
          case BarMitzvah:
