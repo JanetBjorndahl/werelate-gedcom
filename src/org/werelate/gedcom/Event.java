@@ -187,14 +187,6 @@ public class Event extends ReferenceContainer implements Comparable {
       {
          // Will of course return null if we have moved the temple
          // code from the PLAC attribute to the TEMP attribute
-
-         // place2standard has a map from all place names in the
-         // gedcom to the WeRelate standardized place names         
-
-         // We are no longer doing this in the first phase, so,
-         // we will just return the non-standardized place.
-         //return gedcom.getPlace2standard().get(getAttribute("PLAC"));
-
          return getAttribute("PLAC");
       } catch (NullPointerException e)
       {         

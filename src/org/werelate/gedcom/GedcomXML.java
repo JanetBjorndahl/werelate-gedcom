@@ -635,12 +635,25 @@ public class GedcomXML {
       node.getParentNode().removeChild(node);
    }
 
-   public void updateContent () throws XPathExpressionException
+   // place2displayName maps standardized gedcom place names to refined display names.
+   private Map<String, String> place2displayName = new HashMap<String, String>();
+
+   public String getPlace2displayName(String text) {
+      return place2displayName.get(text);
+   }
+
+   private Uploader uploader = null;
+
+   public void updateContent () throws XPathExpressionException, IOException
    {
       updateCollectionContent(personIds, familyReferenceExpression, "Family", null, null);
       updateCollectionContent(familyIds, personReferenceExpression, "Person", personReferenceAttributeExpression, "Family");
 
       // Now let's update all of the places referenced.
+      // The first step ensures that each place has the correct Place page titlr
+      // based on any changes the user made to place matching.
+      // It also accumulates a list of all places to get standard display names for.
+      Set <String> placeNames = new HashSet <String>();
       for (Map.Entry<String, Document> entry : id2Content.entrySet())
       {
          NodeList placeReferences = (NodeList) placeAttributeExpression.evaluate(entry.getValue(),
@@ -657,6 +670,26 @@ public class GedcomXML {
                {
                   placeNode.setTextContent(placeTitle + '|' + text);
                }
+            }
+            placeNames.add(placeNode.getNodeValue().replace('|','^'));     // use ^ as a stand-in for the pipe
+         }
+      }
+
+      // The second step is to refine display names. This can't be done before
+      // the first step, since the first step matches on the place text
+      // as it was in the gedcom file.
+      uploader.getPlaceDisplayNames(placeNames, place2displayName);
+      for (Map.Entry<String, Document> entry : id2Content.entrySet())
+      {
+         NodeList placeReferences = (NodeList) placeAttributeExpression.evaluate(entry.getValue(),
+               XPathConstants.NODESET);
+         for (int i=0; i < placeReferences.getLength(); i++)
+         {
+            Node placeNode = placeReferences.item(i);
+            String text = placeNode.getNodeValue();
+            String displayName = getPlace2displayName(text);
+            if (displayName != null) {
+               placeNode.setTextContent(displayName);
             }
          }
       }
@@ -1356,4 +1389,21 @@ public class GedcomXML {
       ew.setSubText(subText.toString());
       ew.write(buf);
    }
+
+   /**
+    * Constructor
+    * @param uploader uploader object which is controlling this GEDCOM
+    */
+   public GedcomXML(Uploader uploader)
+   {
+      this.uploader = uploader;
+   }
+
+   /**
+    * Alternate constructor for fix scripts
+    */ 
+   public GedcomXML()
+   {
+   }
+
 }

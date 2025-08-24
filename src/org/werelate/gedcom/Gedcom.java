@@ -2244,14 +2244,6 @@ public class Gedcom implements ContentHandler {
       }
    }
 
-   // Necessary for when we print out the GEDCOM
-   // to WeRelate person and family page XML
-   private Map<String, String> place2standard = null;
-
-   public Map<String, String> getPlace2standard() {
-      return place2standard;
-   }
-
    // Patterns applied to place names to clean them up.
    private static final String [] CLEAN_PLACE_REGEXES = {
          "^\\s*,\\s*",
