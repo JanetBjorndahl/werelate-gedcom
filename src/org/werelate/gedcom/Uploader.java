@@ -533,7 +533,7 @@ public class Uploader {
                if (!isUnitTesting())
                {
                   // First we need to reload the XML file.
-                  GedcomXML gedXML = new GedcomXML();
+                  GedcomXML gedXML = new GedcomXML(this);
                   try
                   {
                      gedXML.parse(xmlPath);
@@ -563,7 +563,7 @@ public class Uploader {
                try
                {
                   updateGedcom(STATUS_GENERATING, gedID, "");
-                  GedcomXML gedXml = new GedcomXML();
+                  GedcomXML gedXml = new GedcomXML(this);
                   gedXml.parse(getXml_inprocess() + '/' + gedID + ".xml");
                   readGedcomData(gedXml, false);
 
@@ -1814,11 +1814,13 @@ public class Uploader {
    private static Pattern pEndSearchResults = Pattern.compile("</response>$", Pattern.MULTILINE);
 
    /**
-    * Produces a map from the names passed in to WeRelate standardized
-    * names as returned by the PlaceSearch server. If the server was
-    * not able to find the place name, then there is no entry
-    * in the map for it.
+    * Produces a map from the names passed in to WeRelate Place page names
+    * as returned by the PlaceSearch server. If the server was not able to
+    * find the place name, then there is no entry in the map for it.
+    * @param placeServer the name of the server that standardizes place names
     * @param names place names to standardize
+    * @param defaultCountry country to use when a place name doesn't include a country
+    * @param placeXMLBuffer buffer to populate
     * @throws IOException
     */
    public void getStandardizedPlaceNames(String placeServer, Set<String> names, String defaultCountry,
@@ -1827,6 +1829,86 @@ public class Uploader {
    {
       if (names.size() > 0)
       {
+         String s = standardizePlaceNames(placeServer, names, defaultCountry);
+         logger.info("Parsing place results");
+         // Now let's create an input source for our XPaths (used in the user
+         // interface to show mapping of gedcom place names to Place pages).
+         try
+         {
+            Document doc = db.parse(new InputSource(new StringReader(s)));
+            NodeList lstNodes = (NodeList) lstExpression.evaluate(doc, XPathConstants.NODESET);
+            for (int i=0; i < lstNodes.getLength(); i++)
+            {
+               Node node = lstNodes.item(i);
+               String q = (String) queryExpression.evaluate(node, XPathConstants.STRING);
+               String placeTitle = (String)placeTitleExpression.evaluate(node, XPathConstants.STRING);
+               String splitTitle[] = placeTitle.split("\\^", 2);    // remove the stand-in pipe (^) and display name
+               placeTitle = splitTitle[0];
+               String error = (String) errorExpression.evaluate(node, XPathConstants.STRING);
+               ElementWriter ew = new GedcomElementWriter("place");
+               ew.put("key", String.format("WRP%03d", i));
+               ew.put("text", q);
+               ew.put("title", placeTitle);
+               Node errorNode = node.getAttributes().getNamedItem("error");
+               if (!Utils.isEmpty(error))
+               {
+                  ew.put("error", error);
+               }
+               ew.write(placeXMLBuffer);
+            }
+         } catch (Exception e)
+         {
+            throw new RuntimeException(e);
+         }
+         logger.info("Done parsing results");
+      }
+   }
+
+   /**
+    * Produces a map from the names passed in to refined display names
+    * as returned by the PlaceSearch server.
+    * @param names place names to get standardized display names for
+    * @param placeMap map to populate
+    * @throws IOException
+    */
+   public void getPlaceDisplayNames(Set<String> names, Map<String, String> placeMap)
+         throws IOException
+   {
+      if (names.size() > 0)
+      {
+         String s = standardizePlaceNames(placeServer, names, "");
+         logger.info("Create place display name map");
+         // The placeMap maps each gedcom place name to place name with standardized display name.
+         try
+         {
+            Document doc = db.parse(new InputSource(new StringReader(s)));
+            NodeList lstNodes = (NodeList) lstExpression.evaluate(doc, XPathConstants.NODESET);
+            for (int i=0; i < lstNodes.getLength(); i++)
+            {
+               Node node = lstNodes.item(i);
+               String q = (String) queryExpression.evaluate(node, XPathConstants.STRING);
+               String placeString = (String)placeTitleExpression.evaluate(node, XPathConstants.STRING);
+//logger.warn("getPlaceDisplayNames: q=" + q + "placeString=" + placeString);
+               placeMap.put(q.replace('^', '|'), placeString.replace('^', '|'));    // replace stand-in pipe (^)
+            }
+         } catch (Exception e)
+         {
+            throw new RuntimeException(e);
+         }
+         logger.info("Done creating place display name map");
+      }
+   }
+
+   /**
+    * Executes a query to standardize place names and display names.
+    * @param placeServer the name of the server where the query is run
+    * @param names place names to standardize
+    * @param defaultCountry country to use when a place name doesn't include a country
+    * @throws IOException
+    */   
+   private String standardizePlaceNames(String placeServer, Set<String> names, String defaultCountry) 
+         throws IOException 
+   {
          boolean started = false;
          logger.info("Creating place standardization query");
          StringBuffer query = new StringBuffer();
@@ -1871,10 +1953,7 @@ public class Uploader {
          String charSet = m.getResponseCharSet();
          String s = m.getResponseBodyAsString();
 
-         // Now we need to parse the response as XPaths.
-
-         // First we need to check to make sure that we got a valid response
-         // back.
+         // Check to make sure that we got a valid response back.
          Matcher mBeginSearchResults = pBeginSearchResults.matcher(s);
          Matcher mEndSearchResults = pEndSearchResults.matcher(s);
          if (!(mBeginSearchResults.find() && mEndSearchResults.find()))
@@ -1885,36 +1964,7 @@ public class Uploader {
          }
 
          logger.info("Done executing method, got back valid string");
-         logger.info("Parsing place results");
-         // Now let's create an input source for our XPaths.
-         try
-         {
-            //System.out.println(s);
-            Document doc = db.parse(new InputSource(new StringReader(s)));
-            NodeList lstNodes = (NodeList) lstExpression.evaluate(doc, XPathConstants.NODESET);
-            for (int i=0; i < lstNodes.getLength(); i++)
-            {
-               Node node = lstNodes.item(i);
-               String q = (String) queryExpression.evaluate(node, XPathConstants.STRING);
-               String placeTitle = (String)placeTitleExpression.evaluate(node, XPathConstants.STRING);
-               String error = (String) errorExpression.evaluate(node, XPathConstants.STRING);
-               ElementWriter ew = new GedcomElementWriter("place");
-               ew.put("key", String.format("WRP%03d", i));
-               ew.put("text", q);
-               ew.put("title", placeTitle);
-               Node errorNode = node.getAttributes().getNamedItem("error");
-               if (!Utils.isEmpty(error))
-               {
-                  ew.put("error", error);
-               }
-               ew.write(placeXMLBuffer);
-            }
-         } catch (Exception e)
-         {
-            throw new RuntimeException(e);
-         }
-         logger.info("Done parsing results");
-      }
+         return s;
    }
 
    /**
