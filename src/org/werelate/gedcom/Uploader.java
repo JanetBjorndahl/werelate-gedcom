@@ -1875,7 +1875,7 @@ public class Uploader {
    public void getPlaceDisplayNames(String placeServer, Set<String> names, Map<String, String> placeMap)
          throws IOException
    {
-//logger.warn("getPlaceDisplayNames: placeServer=" + placeServer);      
+logger.info("getPlaceDisplayNames: placeServer=" + placeServer + " # place names=" + names.size());      
       if (names.size() > 0)
       {
          String s = standardizePlaceNames(placeServer, names, "");
