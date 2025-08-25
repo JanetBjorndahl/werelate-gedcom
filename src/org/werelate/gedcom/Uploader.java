@@ -1210,7 +1210,7 @@ public class Uploader {
       gedXml.setReservedTitles(reservations);
       logger.info("Done reserving titles for people and families in Gedcom");
       logger.info("Updating all gedcom ID references with the reserved titles");
-      gedXml.updateContent();
+      gedXml.updateContent(placeServer);
       logger.info("Done updating with reserved titles");
    }
 
@@ -1867,13 +1867,15 @@ public class Uploader {
    /**
     * Produces a map from the names passed in to refined display names
     * as returned by the PlaceSearch server.
+    * @param placeServer location of the place search server
     * @param names place names to get standardized display names for
     * @param placeMap map to populate
     * @throws IOException
     */
-   public void getPlaceDisplayNames(Set<String> names, Map<String, String> placeMap)
+   public void getPlaceDisplayNames(String placeServer, Set<String> names, Map<String, String> placeMap)
          throws IOException
    {
+//logger.warn("getPlaceDisplayNames: placeServer=" + placeServer);      
       if (names.size() > 0)
       {
          String s = standardizePlaceNames(placeServer, names, "");

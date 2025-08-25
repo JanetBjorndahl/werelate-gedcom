@@ -644,7 +644,7 @@ public class GedcomXML {
 
    private Uploader uploader = null;
 
-   public void updateContent () throws XPathExpressionException, IOException
+   public void updateContent (String placeServer) throws XPathExpressionException, IOException
    {
       updateCollectionContent(personIds, familyReferenceExpression, "Family", null, null);
       updateCollectionContent(familyIds, personReferenceExpression, "Person", personReferenceAttributeExpression, "Family");
@@ -678,7 +678,7 @@ public class GedcomXML {
       // The second step is to refine display names. This can't be done before
       // the first step, since the first step matches on the place text
       // as it was in the gedcom file.
-      uploader.getPlaceDisplayNames(placeNames, place2displayName);
+      uploader.getPlaceDisplayNames(placeServer, placeNames, place2displayName);
       for (Map.Entry<String, Document> entry : id2Content.entrySet())
       {
          NodeList placeReferences = (NodeList) placeAttributeExpression.evaluate(entry.getValue(),
