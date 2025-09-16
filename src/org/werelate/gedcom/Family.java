@@ -372,15 +372,16 @@ public class Family extends EventContainer{
          if (event.getType() != Event.Type.lds_spouse_sealing) {
             String date = event.getAttribute("DATE");
             if (!Utils.isEmpty(date)) {
-               // Edit dates - error if the date cannot be interpreted; otherwise an alert if the date requires signficant reformating. Added Aug 2021 by Janet Bjorndahl
+               // Edit dates - warning if the date cannot be interpreted; no message for dates requiring signficant reformating. Changed Sep 2025 by Janet Bjorndahl
+               // Old: Edit dates - error if the date cannot be interpreted; otherwise an alert if the date required signficant reformating. Added Aug 2021 by JB
                EventDate eventDate = new EventDate(date, event.eventType());
                if (eventDate.editDate()) {
-                  if (eventDate.getSignificantReformat()) {
-                     addProblem("0" + event.eventType() + " date automatically reformated from \"" + date + "\" to \"" + eventDate.getFormatedDate() + "\"");
-                  }
+//                  if (eventDate.getSignificantReformat()) {
+//                     addProblem("0" + event.eventType() + " date automatically reformated from \"" + date + "\" to \"" + eventDate.getFormatedDate() + "\"");
+//                  }
                }
                else {
-                  addProblem("2" + eventDate.getErrorMessage() + ": " + date + " (Please write dates in \"d mmm yyyy\" format, e.g., 5 Jan 1900)");
+                  addProblem("1" + eventDate.getErrorMessage() + ": " + date + " (Please write dates in \"d mmm yyyy\" format, e.g., 5 Jan 1900)");
                }
                if (event.getType() == Event.Type.marriage) {
                   marriageDate = date;
