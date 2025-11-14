@@ -26,6 +26,7 @@ public class Note implements ReferencedObject {
 
    public static String cleanNoteText(String note) {
       if (note != null) {
+         note = note.replace("== Sources ==\n<references />","");        // WikiTree gedcom (simple case when there aren't additional sources defined)
          note = note.trim();
          if (note.contains("{geni:place_name}") || note.contains("{geni:county}")) {
             note = "";
