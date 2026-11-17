@@ -978,6 +978,7 @@ public class Event extends ReferenceContainer implements Comparable {
       EVENT_TYPES.put("HEAL", Event.Type.Medical);
       EVENT_TYPES.put("_HEIG", Event.Type.PhysicalDescription);
       EVENT_TYPES.put("_HEIGHT", Event.Type.PhysicalDescription);
+      EVENT_TYPES.put("IDNO", Event.Type.ReferenceNumber);          // added Nov 2026
       EVENT_TYPES.put("IMMI", Event.Type.Immigration);
       EVENT_TYPES.put("IMMIGRATION", Event.Type.Immigration);
       EVENT_TYPES.put("MARB", Event.Type.MarriageBanns);
