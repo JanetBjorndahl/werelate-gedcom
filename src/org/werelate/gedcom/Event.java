@@ -685,7 +685,7 @@ public class Event extends ReferenceContainer implements Comparable {
                      Annulment,DivorceFiling,Engagement,MarriageBanns,
                      MarriageContract,MarriageLicense,MarriageNotice,
                      MarriageSettlement,Separation,
-                     Other, DNA                                            // DNA added Aug 2021 by Janet Bjorndahl
+                     Other, DNA, TitleNobility                                  // DNA added Aug 2021, TitleNobility added Nov 2026 by Janet Bjorndahl
    }
    private Type type;
 
@@ -816,6 +816,8 @@ public class Event extends ReferenceContainer implements Comparable {
             return "Retirement";
          case Stillborn:
             return "Stillborn";
+         case TitleNobility:
+            return "Title (nobility)";
          case Will:
             return "Will";
          case marriage:
@@ -1015,6 +1017,8 @@ public class Event extends ReferenceContainer implements Comparable {
       EVENT_TYPES.put("SSN", Event.Type.SocSecNo);
       EVENT_TYPES.put("SOC_", Event.Type.SocSecNo);
       EVENT_TYPES.put("SOC_SEC_NUMBER", Event.Type.SocSecNo);
+      EVENT_TYPES.put("TITL", Event.Type.TitleNobility);        // added Nov 2026
+      EVENT_TYPES.put("TITLE", Event.Type.TitleNobility);       // added Nov 2026
       EVENT_TYPES.put("_UNKN", Event.Type.unknown);
       EVENT_TYPES.put("_WEIG", Event.Type.PhysicalDescription);
       EVENT_TYPES.put("_WEIGHT", Event.Type.PhysicalDescription);
