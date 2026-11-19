@@ -737,7 +737,21 @@ public class Gedcom implements ContentHandler {
                pushUnknown(peekName, localName);
             }
          } else if (isTITL(peekName)) {
-            if (isSubNoteTitleText(localName)) {
+            if (tagStack.size() > 1) {
+               // This means we're in a nobility title,
+               // not a source title tag.
+               if (localName.equals("DATE") ||
+                     localName.equals("PLAC"))
+               {
+                  tagStack.push(newTag);
+               } else if (isSubNoteTitleText(localName)) {
+                  tagStack.push(newTag);
+               } else if (localName.equals("_RIN")) {
+                  pushSilentIgnore(peekName, localName);
+               } else {
+                  pushUnknown("TITL (Nobility)", localName);
+               }
+            } else if (isSubNoteTitleText(localName)) {
                tagStack.push(newTag);
             } else if (isSOUR(localName)) {
                if (currCitation != null) {
